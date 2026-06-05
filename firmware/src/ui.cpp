@@ -92,10 +92,10 @@ void ui_update(int session_pct, int week_pct, int session_limit, int week_limit,
     lv_arc_set_angles(arc_week,    0, week_pct    * 360 / 100);
 
     int sl = session_limit * 360 / 100;
-    lv_arc_set_angles(arc_limit_session, sl, sl + 2);
+    lv_arc_set_angles(arc_limit_session, sl, min(sl + 2, 360));
 
     int wl = week_limit * 360 / 100;
-    lv_arc_set_angles(arc_limit_week, wl, wl + 2);
+    lv_arc_set_angles(arc_limit_week, wl, min(wl + 2, 360));
 
     // 編集中のマーカーを明るく、非編集を暗く
     lv_color_t active   = lv_color_hex(0xFF4400);
