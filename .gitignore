@@ -1,3 +1,23 @@
+# シークレット類
+.env
+*.env
+config.h
+*.credentials.json
+**/.credentials.json
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Python
+daemon/.venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Prerequisites
 *.d
 
