@@ -91,11 +91,12 @@ void ui_update(int session_pct, int week_pct, int session_limit, int week_limit,
     lv_arc_set_angles(arc_session, 0, session_pct * 360 / 100);
     lv_arc_set_angles(arc_week,    0, week_pct    * 360 / 100);
 
-    int sl = session_limit * 360 / 100;
-    lv_arc_set_angles(arc_limit_session, sl, min(sl + 2, 360));
-
-    int wl = week_limit * 360 / 100;
-    lv_arc_set_angles(arc_limit_week, wl, min(wl + 2, 360));
+    auto set_marker = [](lv_obj_t *arc, int pct) {
+        int start = min(pct * 360 / 100, 358);  // 常に2°のセグメントを確保
+        lv_arc_set_angles(arc, start, start + 2);
+    };
+    set_marker(arc_limit_session, session_limit);
+    set_marker(arc_limit_week,    week_limit);
 
     // 編集中のマーカーを明るく、非編集を暗く
     lv_color_t active   = lv_color_hex(0xFF4400);

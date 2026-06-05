@@ -1,6 +1,7 @@
 #include <M5Unified.h>
 #include <lvgl.h>
 #include "ui.h"
+#include "ble.h"
 
 // 画面向き: 0=USB下, 2=USB上（ケーブルが上から出るとき）
 #define DISPLAY_ROTATION 2
@@ -15,14 +16,14 @@ static volatile int enc_count = 0;
 
 static int session_limit = 80;
 static int week_limit    = 80;
-static int session_pct   = 45;   // デモ値（後でBLEから受信）
-static int week_pct      = 28;   // デモ値
+static int session_pct   = 0;
+static int week_pct      = 0;
 static edit_target_t edit_target = EDIT_SESSION;
 
 // 警告状態
 typedef enum { WARN_NONE, WARN_NEAR, WARN_LIMIT } warn_state_t;
 static warn_state_t warn_state = WARN_NONE;
-static bool muted = false;   // タップで消音
+static bool muted = false;
 
 void IRAM_ATTR enc_isr() {
     bool a = digitalRead(ENC_A_PIN);
@@ -40,10 +41,9 @@ void beep_near() {
     beep(1200, 80); delay(60); beep(1200, 80);
 }
 
-// 使用率とリミットから現在の警告レベルを返す
 static warn_state_t calc_warn(int pct, int limit) {
-    if (pct >= limit)        return WARN_LIMIT;
-    if (pct >= limit - 5)    return WARN_NEAR;
+    if (pct >= limit)      return WARN_LIMIT;
+    if (pct >= limit - 5)  return WARN_NEAR;
     return WARN_NONE;
 }
 
@@ -60,12 +60,15 @@ void setup() {
     ui_init(M5.Display.width(), M5.Display.height());
     ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
 
+    ble_init("Clawdial");
+
     beep(1000, 80);
 }
 
 static int last_enc = 0;
 static unsigned long last_lvgl_tick = 0;
 static unsigned long last_alarm_ms  = 0;
+static unsigned long last_ble_ms    = 0;
 static bool alert_flash = false;
 
 void loop() {
@@ -75,6 +78,17 @@ void loop() {
     lv_tick_inc(now - last_lvgl_tick);
     last_lvgl_tick = now;
     lv_timer_handler();
+
+    // BLEデータを500msごとに反映
+    if (now - last_ble_ms >= 500) {
+        last_ble_ms = now;
+        BleData d = ble_get_data();
+        if (d.ok) {
+            session_pct = d.session_pct;
+            week_pct    = d.week_pct;
+            ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
+        }
+    }
 
     // エンコーダでリミット調整
     int enc = enc_count;
@@ -91,17 +105,15 @@ void loop() {
         beep(adj > 0 ? 1200 : 800, 20);
     }
 
-    // タッチ: 編集切り替え or 消音
+    // タッチ: 消音 or 編集対象切り替え
     if (M5.Touch.getCount() > 0) {
         auto t = M5.Touch.getDetail();
         if (t.wasPressed()) {
             if (warn_state == WARN_LIMIT && !muted) {
-                // アラーム中はタップで消音
                 muted = true;
                 ui_set_alert(false);
                 noTone(BUZZER_PIN);
             } else {
-                // 通常時はリミット編集対象を切り替え
                 edit_target = (edit_target == EDIT_SESSION) ? EDIT_WEEK : EDIT_SESSION;
                 ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
                 beep(1500, 40);
@@ -109,17 +121,14 @@ void loop() {
         }
     }
 
-    // 警告レベル判定（セッション・週間の高い方を採用）
+    // 警告レベル判定
     warn_state_t ws = max(calc_warn(session_pct, session_limit),
                           calc_warn(week_pct, week_limit));
 
-    // 警告レベルが上がったらミュートリセット & 初回音
     if (ws > warn_state) {
         muted = false;
         if (ws == WARN_NEAR)  beep_near();
-        // WARN_LIMIT はループ内で繰り返す
     }
-    // 警告レベルが下がったら（リミット変更等）リセット
     if (ws < warn_state) {
         muted = false;
         ui_set_alert(false);
