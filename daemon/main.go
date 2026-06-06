@@ -249,9 +249,6 @@ var adapter = bluetooth.DefaultAdapter
 
 func findDevice(cfg config) (bluetooth.ScanResult, error) {
 	log.Printf("Scanning for '%s'...", cfg.deviceName)
-	if err := adapter.Enable(); err != nil {
-		return bluetooth.ScanResult{}, fmt.Errorf("enable adapter: %w", err)
-	}
 
 	found := make(chan bluetooth.ScanResult, 1)
 	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
@@ -281,6 +278,12 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 func run(ctx context.Context, cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
+
+	// BLEアダプターの有効化はプロセス起動時に一度だけ行う。
+	// Enable the BLE adapter once at startup — re-calling it on Windows causes an error.
+	if err := adapter.Enable(); err != nil {
+		return fmt.Errorf("enable adapter: %w", err)
+	}
 
 	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	for {
