@@ -42,7 +42,6 @@ RX_UUID = "4c41555a-4465-7669-6365-000000000002"
 def load_token() -> str:
     raw = CREDENTIALS_PATH.read_text()
     data = json.loads(raw)
-    # {"claudeAiOauth": {"accessToken": "..."}} または {"accessToken": "..."}
     if isinstance(data.get("accessToken"), str):
         return data["accessToken"]
     for v in data.values():
@@ -54,7 +53,13 @@ def load_token() -> str:
     raise RuntimeError("accessToken not found in credentials")
 
 
-async def fetch_usage(token: str) -> dict | None:
+def clamp(val: int, lo: int = 0, hi: int = 100) -> int:
+    return max(lo, min(hi, val))
+
+
+async def fetch_usage(token: str) -> tuple[dict | None, float]:
+    """使用量を取得する。戻り値は (payload, retry_after_seconds)。
+    429 のときは payload=None, retry_after>0 を返す。"""
     headers = dict(API_HEADERS)
     headers["Authorization"] = f"Bearer {token}"
     try:
@@ -62,11 +67,16 @@ async def fetch_usage(token: str) -> dict | None:
             resp = await client.post(API_URL, headers=headers, json=API_BODY)
     except httpx.HTTPError as e:
         print(f"API error: {e}")
-        return None
+        return None, 0.0
+
+    if resp.status_code == 429:
+        retry_after = float(resp.headers.get("retry-after", POLL_INTERVAL))
+        print(f"Rate limited. Retry after {retry_after:.0f}s")
+        return None, retry_after
 
     if resp.status_code >= 400:
         print(f"API HTTP {resp.status_code}: {resp.text[:200]}")
-        return None
+        return None, 0.0
 
     now = time.time()
 
@@ -75,7 +85,7 @@ async def fetch_usage(token: str) -> dict | None:
 
     def pct(util: str) -> int:
         try:
-            return int(round(float(util) * 100))
+            return clamp(int(round(float(util) * 100)))
         except ValueError:
             return 0
 
@@ -92,7 +102,7 @@ async def fetch_usage(token: str) -> dict | None:
         "w":  pct(hdr("anthropic-ratelimit-unified-7d-utilization")),
         "wr": reset_minutes(hdr("anthropic-ratelimit-unified-7d-reset")),
         "ok": True,
-    }
+    }, 0.0
 
 
 async def find_device():
@@ -112,16 +122,31 @@ async def run():
         try:
             async with BleakClient(device) as client:
                 print("Connected!")
+                cached: dict | None = None  # 直前の成功ペイロードをキャッシュ
+
                 while client.is_connected:
-                    payload = await fetch_usage(token)
-                    if payload is None:
+                    payload, retry_after = await fetch_usage(token)
+
+                    if payload is not None:
+                        cached = payload
+                    elif cached is not None:
+                        # 429 や一時エラー時は直前の値を維持して送り続ける
+                        payload = cached
+                        print(f"Using cached: {payload}")
+                    else:
                         payload = {"s": 0, "sr": 0, "w": 0, "wr": 0, "ok": False}
 
-                    print(f"Sent: {payload}")
                     msg = json.dumps(payload, separators=(",", ":")).encode()
                     await client.write_gatt_char(RX_UUID, msg, response=False)
+                    print(f"Sent: {payload}")
 
-                    await asyncio.sleep(POLL_INTERVAL)
+                    # retry-after は参考値。最大5分でリトライして早期回復を検出
+                    if retry_after > 0:
+                        wait = min(retry_after, 300)
+                        print(f"Waiting {wait:.0f}s before retry...")
+                    else:
+                        wait = POLL_INTERVAL
+                    await asyncio.sleep(wait)
 
                 print("Disconnected. Reconnecting...")
         except BleakError as e:

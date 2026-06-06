@@ -42,8 +42,8 @@ void beep_near() {
 }
 
 static warn_state_t calc_warn(int pct, int limit) {
-    if (pct >= limit)      return WARN_LIMIT;
-    if (pct >= limit - 5)  return WARN_NEAR;
+    if (pct >= limit)                      return WARN_LIMIT;
+    if (pct >= max(0, limit - 5))          return WARN_NEAR;
     return WARN_NONE;
 }
 
@@ -84,8 +84,8 @@ void loop() {
         last_ble_ms = now;
         BleData d = ble_get_data();
         if (d.ok) {
-            session_pct = d.session_pct;
-            week_pct    = d.week_pct;
+            session_pct = constrain(d.session_pct, 0, 100);
+            week_pct    = constrain(d.week_pct,    0, 100);
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
         }
     }
