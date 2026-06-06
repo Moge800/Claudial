@@ -11,7 +11,7 @@ Just place it on your desk and turn the dial. Session and weekly usage are displ
 
 ![Clawdial on desk](assets/device.jpg)
 
-> 📹 [Alert demo video (red flash + beep)](assets/alert_demo.mp4)
+![Alert demo (red flash + beep)](assets/alert_demo.gif)
 
 ---
 

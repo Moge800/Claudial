@@ -153,9 +153,9 @@ void loop() {
         int delta = enc - last_enc;
         last_enc = enc;
 
-        // rotation=0(USB下/台座)でエンコーダ反転、rotation=2(USB上)では正方向
-        // Invert encoder when rotation=0 (USB at bottom/stand), normal when rotation=2 (USB at top)
-        int adj = (display_rotation == 0) ? -delta : delta;
+        // 画面向きに関わらず常に反転（ハードウェアの配線によりCW=負のdelta）
+        // Always invert: encoder hardware produces negative delta for clockwise rotation.
+        int adj = -delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
             storage_set_session_limit(session_limit);

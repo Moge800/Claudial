@@ -11,7 +11,7 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 ![Clawdial on desk](assets/device.jpg)
 
-> 📹 [警告デモ動画（赤フラッシュ＋ビープ）](assets/alert_demo.mp4)
+![警告デモ（赤フラッシュ＋ビープ）](assets/alert_demo.gif)
 
 ---
 
