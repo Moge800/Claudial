@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -277,23 +278,38 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 	}
 }
 
-func run(cfg config) error {
+func run(ctx context.Context, cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
 	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	for {
+		// キャンセル済みなら終了 / Exit if context was cancelled (e.g. tray Quit).
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
 		result, err := findDevice(cfg)
 		if err != nil {
 			log.Printf("Scan error: %v. Retrying in 5s...", err)
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
 
 		dev, err := adapter.Connect(result.Address, bluetooth.ConnectionParams{})
 		if err != nil {
 			log.Printf("Connect error: %v. Retrying in 5s...", err)
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
 		log.Println("Connected!")
@@ -306,7 +322,11 @@ func run(cfg config) error {
 			// Device will show offline screen after BLE timeout.
 			log.Printf("Token load error: %v. Retrying in 5s...", err)
 			dev.Disconnect()
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
 		if err := runSession(&dev, token, cfg, &cached); err != nil {
@@ -436,7 +456,7 @@ func setupLogFile() {
 		return
 	}
 	logPath := filepath.Join(filepath.Dir(exe), "daemon.log")
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		log.Printf("Cannot open log file %s: %v", logPath, err)
 		return

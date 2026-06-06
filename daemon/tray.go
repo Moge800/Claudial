@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"log"
 	"os"
@@ -36,9 +37,13 @@ func onReady(cfg config) {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Stop Clawdial daemon")
 
+	// Quitで再接続ループをキャンセルできるようcontextを渡す。
+	// Pass a cancellable context so Quit stops the reconnect loop cleanly.
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// daemonのメインループをgoroutineで実行 / Run daemon loop in background goroutine.
 	go func() {
-		if err := run(cfg); err != nil {
+		if err := run(ctx, cfg); err != nil {
 			log.Printf("daemon error: %v", err)
 		}
 	}()
@@ -53,8 +58,9 @@ func onReady(cfg config) {
 			// Create .env with defaults if absent — log-only is invisible with windowsgui.
 			openOrCreateConfig()
 		case <-mQuit.ClickedCh:
-			// systray.Quit()を呼んでRunが正常にアンワインドするのを待つ
-			// Call systray.Quit() and return so systray.Run() unwinds normally.
+			// daemonのgoroutineをキャンセルしてからsystrayを終了する。
+			// Cancel the daemon goroutine before stopping the systray.
+			cancel()
 			systray.Quit()
 			return
 		}
@@ -90,13 +96,17 @@ func openFile(path string) {
 }
 
 // defaultEnvContent は.envが存在しない場合に書き込むデフォルト内容。
+// Keys must match what loadConfig() reads via os.Getenv.
 // defaultEnvContent is written to .env when the file does not exist.
 const defaultEnvContent = `# Clawdial daemon configuration
-# BLE_DEVICE_NAME: name of your M5Dial (set in firmware via long-press)
-BLE_DEVICE_NAME=Clawdial
+# CLAWDIAL_DEVICE_NAME: BLE name of your M5Dial (set in firmware via long-press)
+CLAWDIAL_DEVICE_NAME=Clawdial
 
-# POLL_INTERVAL_SECONDS: how often to query Anthropic API (seconds, default 60)
-POLL_INTERVAL_SECONDS=60
+# CLAWDIAL_POLL_INTERVAL: how often to query Anthropic API (e.g. 60s, 2m)
+CLAWDIAL_POLL_INTERVAL=60s
+
+# CLAWDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt (e.g. 30s)
+CLAWDIAL_SCAN_TIMEOUT=30s
 `
 
 // openOrCreateConfig は.envが存在しなければデフォルト内容で作成してから開く。

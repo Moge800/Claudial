@@ -5,10 +5,13 @@
 
 package main
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
 func runWithTray(cfg config) {
-	if err := run(cfg); err != nil {
+	if err := run(context.Background(), cfg); err != nil {
 		log.Fatalf("daemon error: %v", err)
 	}
 }
