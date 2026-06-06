@@ -58,10 +58,10 @@ func main() {
 
 	// ICONDIRENTRY
 	writeB([]byte{16, 16, 0, 0}) // width, height, colorCount, reserved
-	write(uint16(1))              // planes
-	write(uint16(32))             // bitCount
-	write(pngSize)                // size
-	write(dataOffset)             // offset
+	write(uint16(1))             // planes
+	write(uint16(32))            // bitCount
+	write(pngSize)               // size
+	write(dataOffset)            // offset
 
 	writeB(pngData)
 	fmt.Println("icon.ico written")
