@@ -22,7 +22,7 @@ echo.
 :: ビルド
 echo [1/3] ビルド中...
 cd /d "%~dp0"
-go build -o clawdial-daemon.exe .
+go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .
 if errorlevel 1 (
     echo [ERROR] ビルドに失敗しました。
     pause

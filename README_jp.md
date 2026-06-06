@@ -171,12 +171,13 @@ CLAWDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
 
 ## BLE プロトコル
 
-Clawdmeter と共通の UUID を使用しています。
+Clawdial 固有の UUID を使用しています（RFC 4122 v4、ベース `29590732-a70c-4ea9-a739-…`）。
 
 | 項目 | UUID |
 |------|------|
-| Service | `4c41555a-4465-7669-6365-000000000001` |
-| RX Characteristic (write) | `4c41555a-4465-7669-6365-000000000002` |
+| Service | `29590732-a70c-4ea9-a739-000000000001` |
+| RX Characteristic (write) | `29590732-a70c-4ea9-a739-000000000002` |
+| TX Characteristic (notify) | `29590732-a70c-4ea9-a739-000000000003` |
 
 JSON ペイロード（daemon → device）:
 
@@ -200,4 +201,4 @@ JSON ペイロード（daemon → device）:
 
 MIT — [LICENSE](LICENSE) 参照。
 
-[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。BLE UUID とレートリミットヘッダーのポーリング方式は同プロジェクトを参考にしていますが、コードはすべて独自実装です。
+[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしていますが、BLE UUID およびコードはすべて独自実装です。

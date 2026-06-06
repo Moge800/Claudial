@@ -171,12 +171,13 @@ Long-press the touch screen for 1 second to toggle between orientations. The dev
 
 ## BLE Protocol
 
-Shares the same UUID as Clawdmeter.
+Uses Clawdial-specific UUIDs (RFC 4122 v4, base `29590732-a70c-4ea9-a739-…`).
 
 | Item | UUID |
 |------|------|
-| Service | `4c41555a-4465-7669-6365-000000000001` |
-| RX Characteristic (write) | `4c41555a-4465-7669-6365-000000000002` |
+| Service | `29590732-a70c-4ea9-a739-000000000001` |
+| RX Characteristic (write) | `29590732-a70c-4ea9-a739-000000000002` |
+| TX Characteristic (notify) | `29590732-a70c-4ea9-a739-000000000003` |
 
 JSON payload (daemon → device):
 
@@ -200,4 +201,4 @@ JSON payload (daemon → device):
 
 MIT — see [LICENSE](LICENSE).
 
-Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The BLE UUIDs and rate-limit header polling approach are derived from that project; all code is original.
+Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The rate-limit header polling approach is derived from that project; BLE UUIDs and all code are original.

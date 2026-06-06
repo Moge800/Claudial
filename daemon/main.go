@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,7 @@ import (
 
 const (
 	apiURL       = "https://api.anthropic.com/v1/messages"
-	rxUUID       = "4c41555a-4465-7669-6365-000000000002"
+	rxUUID       = "29590732-a70c-4ea9-a739-000000000002"
 	maxRetryWait = 5 * time.Minute
 )
 
@@ -229,7 +230,9 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	wUtil := hdr("anthropic-ratelimit-unified-7d-utilization")
 	// 主要ヘッダーが欠落している場合は取得失敗としてキャッシュへフォールバック
 	// Treat missing key headers as a fetch failure so the cache is used instead.
-	if sUtil == "" && wUtil == "" {
+	// 片方でも欠落していたらキャッシュへフォールバック（&&だと片方欠落を正常扱いしてしまう）
+	// Fail if either header is missing — && would silently treat a partial response as valid.
+	if sUtil == "" || wUtil == "" {
 		log.Printf("Rate-limit headers missing in 2xx response — falling back to cache")
 		return nil, 0
 	}
@@ -246,70 +249,132 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 
 var adapter = bluetooth.DefaultAdapter
 
-func findDevice(cfg config) (bluetooth.ScanResult, error) {
+func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 	log.Printf("Scanning for '%s'...", cfg.deviceName)
-	if err := adapter.Enable(); err != nil {
-		return bluetooth.ScanResult{}, fmt.Errorf("enable adapter: %w", err)
-	}
 
 	found := make(chan bluetooth.ScanResult, 1)
-	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
-		if r.LocalName() == cfg.deviceName {
-			a.StopScan()
-			// non-blocking: 複数回検出されても最初の1件だけ確定 / keep only the first hit even if detected multiple times
-			select {
-			case found <- r:
-			default:
-			}
-		}
-	})
-	if err != nil {
-		return bluetooth.ScanResult{}, err
-	}
+	scanErr := make(chan error, 1)
 
+	// adapter.Scan() はブロッキング呼び出しのため goroutine で実行する。
+	// adapter.Scan() blocks until StopScan() is called, so run it in a goroutine.
+	go func() {
+		err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
+			if r.LocalName() == cfg.deviceName {
+				a.StopScan()
+				// non-blocking: 複数回検出されても最初の1件だけ確定 / keep only the first hit
+				select {
+				case found <- r:
+				default:
+				}
+			}
+		})
+		if err != nil {
+			scanErr <- err
+		}
+	}()
+
+	// タイムアウト・キャンセル側から StopScan() を呼ぶことで goroutine を解放する。
+	// Call StopScan() from the timeout/cancel arm to unblock the scan goroutine.
 	select {
 	case r := <-found:
 		log.Printf("Found: %s", r.Address)
 		return r, nil
+	case err := <-scanErr:
+		return bluetooth.ScanResult{}, err
 	case <-time.After(cfg.scanTimeout):
-		adapter.StopScan() // タイムアウト時も必ずスキャンを停止 / always stop scanning on timeout too
+		adapter.StopScan()
+		// タイムアウト直前にコールバックが結果を詰めていた場合を救う / Drain any result queued just before timeout.
+		select {
+		case r := <-found:
+			log.Printf("Found (at timeout boundary): %s", r.Address)
+			return r, nil
+		default:
+		}
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
+	case <-ctx.Done():
+		adapter.StopScan()
+		select {
+		case r := <-found:
+			log.Printf("Found (at cancel boundary): %s", r.Address)
+			return r, nil
+		default:
+		}
+		return bluetooth.ScanResult{}, ctx.Err()
 	}
 }
 
-func run(cfg config) error {
+func run(ctx context.Context, cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
+	// BLEアダプターの有効化はプロセス起動時に一度だけ行う。
+	// Enable the BLE adapter once at startup — re-calling it on Windows causes an error.
+	if err := adapter.Enable(); err != nil {
+		return fmt.Errorf("enable adapter: %w", err)
+	}
+
 	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	for {
-		result, err := findDevice(cfg)
+		// キャンセル済みなら終了 / Exit if context was cancelled (e.g. tray Quit).
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
+		result, err := findDevice(ctx, cfg)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil // キャンセルによる終了は正常 / clean exit on cancel
+			}
 			log.Printf("Scan error: %v. Retrying in 5s...", err)
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
 
 		dev, err := adapter.Connect(result.Address, bluetooth.ConnectionParams{})
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			log.Printf("Connect error: %v. Retrying in 5s...", err)
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
 		log.Println("Connected!")
 
 		token, err := loadToken()
 		if err != nil {
+			if ctx.Err() != nil {
+				dev.Disconnect()
+				return nil
+			}
 			// RX characteristicがまだ未取得のため ok:false は送れない。
 			// Cannot send ok:false here — RX characteristic not yet discovered.
 			// デバイスはBLEタイムアウト後にオフライン画面を表示する。
 			// Device will show offline screen after BLE timeout.
 			log.Printf("Token load error: %v. Retrying in 5s...", err)
 			dev.Disconnect()
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return nil
+			}
 			continue
 		}
-		if err := runSession(&dev, token, cfg, &cached); err != nil {
+		if err := runSession(ctx, &dev, token, cfg, &cached); err != nil {
+			if ctx.Err() != nil {
+				dev.Disconnect()
+				return nil // キャンセルによるセッション終了は正常 / clean exit on cancel
+			}
 			log.Printf("Session error: %v", err)
 		}
 		dev.Disconnect()
@@ -333,15 +398,19 @@ func mustUUID(s string) bluetooth.UUID {
 	return u
 }
 
-func runSession(dev *bluetooth.Device, token string, cfg config, cached **payload) error {
+func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg config, cached **payload) error {
 	// WinRT では Connect 直後に discover が失敗することがある → 最大3回リトライ
 	// On WinRT, discovery can fail right after Connect → retry up to 3 times.
 	var svc []bluetooth.DeviceService
 	for attempt := 1; attempt <= 3; attempt++ {
-		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(attempt) * 500 * time.Millisecond):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		var discErr error
 		svc, discErr = dev.DiscoverServices([]bluetooth.UUID{
-			mustUUID("4c41555a-4465-7669-6365-000000000001"),
+			mustUUID("29590732-a70c-4ea9-a739-000000000001"),
 		})
 		if discErr == nil && len(svc) > 0 {
 			break
@@ -417,14 +486,38 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 			return fmt.Errorf("BLE write: %w", err)
 		}
 		log.Printf("Sent: %s", data)
-		time.Sleep(wait)
+		// キャンセル時はポーリングスリープを中断 / Interrupt poll sleep on context cancel.
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
 func main() {
-	log.SetFlags(log.Ltime)
+	log.SetFlags(log.Ldate | log.Ltime)
 	cfg := loadConfig()
-	if err := run(cfg); err != nil {
-		log.Fatal(err)
+	setupLogFile()
+	runWithTray(cfg)
+}
+
+// setupLogFile はexeと同じフォルダにdaemon.logを作成しlogの出力先に追加する。
+// setupLogFile creates daemon.log next to the executable and tees log output to it.
+func setupLogFile() {
+	// os.Executable()失敗時はカレントディレクトリの daemon.log にフォールバック。
+	// tray.logPath() と同じフォールバックパスを使うことで Open Log が常に有効になる。
+	// Fall back to "daemon.log" in cwd on failure, matching tray.logPath()'s fallback.
+	logFile := "daemon.log"
+	if exe, err := os.Executable(); err == nil {
+		logFile = filepath.Join(filepath.Dir(exe), "daemon.log")
 	}
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		log.Printf("Cannot open log file %s: %v", logFile, err)
+		return
+	}
+	// ファイルを先にしてstdout失敗時もファイル書き込みを保証 / File first: ensures log is written even if stdout is invalid (windowsgui).
+	log.SetOutput(io.MultiWriter(f, os.Stdout))
+	log.Printf("Logging to %s", logFile)
 }

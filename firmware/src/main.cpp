@@ -116,15 +116,16 @@ void loop() {
         last_ble_ms = now;
         BleData d = ble_get_data();
 
-        // 1回でも受信したか（boot直後はfalse → オフライン判定をスキップ）
-        // Whether any packet was received (false right after boot → skip offline check).
         bool has_data = (d.received_ms > 0);
         // daemonのポーリング間隔から動的にタイムアウト算出（pi×2+30秒）
         // Derive timeout dynamically from daemon's poll interval (pi*2+30s).
         unsigned long timeout_ms = (d.poll_interval > 0)
             ? (unsigned long)d.poll_interval * 2000UL + 30000UL
             : BLE_TIMEOUT_DEFAULT_MS;
-        bool ble_timeout = has_data && (now - d.received_ms >= timeout_ms);
+        // 未受信時は起動からの経過時間を使う。timeout_ms自体がブート猶予期間になる。
+        // Use time-since-boot when no packet received; timeout_ms itself acts as the boot grace period.
+        unsigned long elapsed = has_data ? (now - d.received_ms) : now;
+        bool ble_timeout = (elapsed >= timeout_ms);
         bool daemon_err  = has_data && !d.ok;
 
         if (daemon_err || ble_timeout) {
