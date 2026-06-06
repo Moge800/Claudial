@@ -20,7 +20,7 @@ void storage_set_rotation(uint8_t rotation) {
 }
 
 uint8_t storage_get_rotation() {
-    return prefs.getUChar("rotation", 2);  // デフォルト: USB上 / default: USB at top
+    return prefs.getUChar("rotation", 0);  // デフォルト: USB下（台座使用時）/ default: USB at bottom (with stand)
 }
 
 void storage_set_session_limit(uint8_t pct) {

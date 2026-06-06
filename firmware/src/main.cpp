@@ -4,13 +4,10 @@
 #include "ble.h"
 #include "storage.h"
 
-// 画面向き: 0=USB下, 2=USB上（ケーブルが上から出るとき）
-// Screen orientation: 0=USB at bottom, 2=USB at top (cable exits from top)
-// 変更後は pio run -t upload で書き込み直してください
-// After changing, re-flash with: pio run -t upload
-#ifndef DISPLAY_ROTATION
-#define DISPLAY_ROTATION 2
-#endif
+// 画面向き: 0=USB下, 2=USB上 — NVSから読み取り、デフォルト0
+// Screen orientation: 0=USB at bottom, 2=USB at top — read from NVS, default 0
+// storage_set_rotation(2) で書き換え可能（要再起動、reflash不要）
+// Can be changed via storage_set_rotation(2) without reflashing (reboot required).
 
 // M5Dial ピン定義 / M5Dial pin definitions
 static const int BUZZER_PIN  = 3;
@@ -32,6 +29,7 @@ static bool          is_offline       = false;
 // Falls back to this default when pi is not received (pi=0 / old daemon).
 static const unsigned long BLE_TIMEOUT_DEFAULT_MS = 150000UL;
 
+static uint8_t display_rotation;  // NVSから読み取り / read from NVS
 static int session_limit;
 static int week_limit;
 static int session_pct = 0;
@@ -75,7 +73,8 @@ void setup() {
 
     auto cfg = M5.config();
     M5.begin(cfg);
-    M5.Display.setRotation(DISPLAY_ROTATION);
+    display_rotation = storage_get_rotation();  // NVSから読み取り / read from NVS
+    M5.Display.setRotation(display_rotation);
 
     pinMode(ENC_A_PIN,   INPUT_PULLUP);
     pinMode(ENC_B_PIN,   INPUT_PULLUP);
@@ -155,7 +154,7 @@ void loop() {
         last_enc = enc;
 
         // 画面180°回転時はエンコーダ方向も反転 / Invert encoder direction when screen is rotated 180°
-        int adj = (DISPLAY_ROTATION == 2) ? -delta : delta;
+        int adj = (display_rotation == 2) ? -delta : delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
             storage_set_session_limit(session_limit);
