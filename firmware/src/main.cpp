@@ -5,12 +5,14 @@
 #include "storage.h"
 
 // 画面向き: 0=USB下, 2=USB上（ケーブルが上から出るとき）
+// Screen orientation: 0=USB at bottom, 2=USB at top (cable exits from top)
 // 変更後は pio run -t upload で書き込み直してください
+// After changing, re-flash with: pio run -t upload
 #ifndef DISPLAY_ROTATION
 #define DISPLAY_ROTATION 2
 #endif
 
-// M5Dial ピン定義
+// M5Dial ピン定義 / M5Dial pin definitions
 static const int BUZZER_PIN  = 3;
 static const int ENC_A_PIN   = 40;
 static const int ENC_B_PIN   = 41;
@@ -19,13 +21,15 @@ static const int ENC_BTN_PIN = 42;
 static volatile int enc_count = 0;
 
 static int last_enc = 0;
-static unsigned long last_lvgl_tick;  // setup() 末尾で millis() 初期化（初回 delta=0）
+static unsigned long last_lvgl_tick;  // setup() 末尾で millis() 初期化（初回 delta=0） / initialized at end of setup() so first delta=0
 static unsigned long last_alarm_ms  = 0;
 static unsigned long last_ble_ms    = 0;
 static bool          alert_flash      = false;
 static bool          is_offline       = false;
 // daemonから受け取るポーリング間隔(pi)で算出: pi×2+30秒。
+// Timeout derived from daemon's poll interval (pi): pi*2+30s.
 // pi未受信（pi=0 / 旧daemon）はこのデフォルトを使用
+// Falls back to this default when pi is not received (pi=0 / old daemon).
 static const unsigned long BLE_TIMEOUT_DEFAULT_MS = 150000UL;
 
 static int session_limit;
@@ -34,7 +38,7 @@ static int session_pct = 0;
 static int week_pct    = 0;
 static edit_target_t edit_target = EDIT_SESSION;
 
-// 警告状態
+// 警告状態 / Warning state
 typedef enum { WARN_NONE, WARN_NEAR, WARN_LIMIT } warn_state_t;
 static warn_state_t warn_state = WARN_NONE;
 static bool muted = false;
@@ -46,14 +50,16 @@ void IRAM_ATTR enc_isr() {
 }
 
 // tone(pin, freq, duration) は duration 後に自動停止するため delay 不要（非ブロッキング）
+// tone() auto-stops after duration, so no delay needed (non-blocking).
 void beep(int freq, int ms) {
     tone(BUZZER_PIN, freq, ms);
 }
 
 void beep_near() {
     // ピピッ: 1回目鳴らして少し待ち、2回目（delay は短くブロックを最小化）
+    // Two short beeps; keep delay short to minimize blocking.
     tone(BUZZER_PIN, 1200, 80);
-    delay(140);  // 80ms音 + 60ms間隔
+    delay(140);  // 80ms音 + 60ms間隔 / 80ms tone + 60ms gap
     tone(BUZZER_PIN, 1200, 80);
 }
 
@@ -85,7 +91,7 @@ void setup() {
     String devName = storage_get_device_name();
     ble_init(devName.c_str());
 
-    last_lvgl_tick = millis();  // 初回 delta=0 にするため setup 末尾で初期化
+    last_lvgl_tick = millis();  // 初回 delta=0 にするため setup 末尾で初期化 / init at end of setup so first delta=0
 
     beep(1000, 80);
 }
@@ -99,14 +105,16 @@ void loop() {
     last_lvgl_tick = now;
     lv_timer_handler();
 
-    // BLEデータを500msごとに反映
+    // BLEデータを500msごとに反映 / Apply BLE data every 500ms
     if (now - last_ble_ms >= 500) {
         last_ble_ms = now;
         BleData d = ble_get_data();
 
         // 1回でも受信したか（boot直後はfalse → オフライン判定をスキップ）
+        // Whether any packet was received (false right after boot → skip offline check).
         bool has_data = (d.received_ms > 0);
         // daemonのポーリング間隔から動的にタイムアウト算出（pi×2+30秒）
+        // Derive timeout dynamically from daemon's poll interval (pi*2+30s).
         unsigned long timeout_ms = (d.poll_interval > 0)
             ? (unsigned long)d.poll_interval * 2000UL + 30000UL
             : BLE_TIMEOUT_DEFAULT_MS;
@@ -115,13 +123,15 @@ void loop() {
 
         if (daemon_err || ble_timeout) {
             // daemon が ok:false を送った → 即オフライン
+            // daemon sent ok:false → go offline immediately
             // BLE受信が途絶えた → タイムアウトでオフライン
+            // BLE reception stopped → go offline on timeout
             if (!is_offline) {
                 is_offline = true;
                 ui_set_offline(true);
             }
         } else if (has_data && d.ok) {
-            // ok:true かつ BLE受信あり → 正常
+            // ok:true かつ BLE受信あり → 正常 / ok:true with received data → normal
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
             if (is_offline) {
@@ -131,9 +141,11 @@ void loop() {
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
         }
         // has_data==false のときは何もしない（初回接続待ち）
+        // Do nothing while has_data==false (waiting for first connection).
     }
 
     // エンコーダでリミット調整（ISR競合防止のため割り込み停止してスナップショット）
+    // Adjust limit via encoder (disable interrupts to snapshot, avoiding ISR race).
     noInterrupts();
     int enc = enc_count;
     interrupts();
@@ -141,7 +153,7 @@ void loop() {
         int delta = enc - last_enc;
         last_enc = enc;
 
-        // 画面180°回転時はエンコーダ方向も反転
+        // 画面180°回転時はエンコーダ方向も反転 / Invert encoder direction when screen is rotated 180°
         int adj = (DISPLAY_ROTATION == 2) ? -delta : delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
@@ -154,7 +166,7 @@ void loop() {
         beep(adj > 0 ? 1200 : 800, 20);
     }
 
-    // タッチ: 消音 or 編集対象切り替え
+    // タッチ: 消音 or 編集対象切り替え / Touch: mute alarm or switch edit target
     if (M5.Touch.getCount() > 0) {
         auto t = M5.Touch.getDetail();
         if (t.wasPressed()) {
@@ -170,7 +182,7 @@ void loop() {
         }
     }
 
-    // 警告レベル判定
+    // 警告レベル判定 / Determine warning level
     warn_state_t ws = max(calc_warn(session_pct, session_limit),
                           calc_warn(week_pct, week_limit));
 
@@ -185,7 +197,7 @@ void loop() {
     }
     warn_state = ws;
 
-    // WARN_LIMIT: 500ms周期でフラッシュ＋ビープ
+    // WARN_LIMIT: 500ms周期でフラッシュ＋ビープ / WARN_LIMIT: flash + beep every 500ms
     if (warn_state == WARN_LIMIT && !muted) {
         if (now - last_alarm_ms >= 500) {
             last_alarm_ms = now;

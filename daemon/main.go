@@ -41,10 +41,12 @@ type config struct {
 
 func loadConfig() config {
 	// 実行ファイルと同じディレクトリの .env を読む（なければ無視）
+	// Load .env from the executable's directory (ignored if absent).
 	if exe, err := os.Executable(); err == nil {
 		_ = godotenv.Load(filepath.Join(filepath.Dir(exe), ".env"))
 	}
 	// カレントディレクトリの .env も読む（開発時用）
+	// Also load .env from the current directory (for development).
 	_ = godotenv.Load()
 
 	cfg := config{
@@ -79,6 +81,7 @@ func loadToken() (string, error) {
 		filepath.Join(home, ".claude", ".credentials.json"),
 	}
 	// Windows 固有のフォールバックパス（環境変数が未設定の環境では追加しない）
+	// Windows-specific fallback paths (skipped when the env var is unset).
 	if v := os.Getenv("LOCALAPPDATA"); v != "" {
 		candidates = append(candidates, filepath.Join(v, "Claude", ".credentials.json"))
 	}
@@ -125,7 +128,7 @@ type payload struct {
 	SR int  `json:"sr"`
 	W  int  `json:"w"`
 	WR int  `json:"wr"`
-	PI int  `json:"pi"` // ポーリング間隔（秒）— M5側のタイムアウト算出用
+	PI int  `json:"pi"` // ポーリング間隔（秒）— M5側のタイムアウト算出用 / poll interval (sec) — used by M5 to derive its timeout
 	Ok bool `json:"ok"`
 }
 
@@ -158,7 +161,7 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 		return nil, 0
 	}
 	defer func() {
-		io.Copy(io.Discard, resp.Body) // keep-alive のためボディを読み切る
+		io.Copy(io.Discard, resp.Body) // keep-alive のためボディを読み切る / drain body to keep the connection alive
 		resp.Body.Close()
 	}()
 
@@ -177,7 +180,7 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	}
 	if resp.StatusCode == 401 {
 		log.Printf("API HTTP 401: token expired — run 'claude login' to refresh, then daemon will retry automatically")
-		return nil, -1 // -1 = 再接続ループへ戻るシグナル
+		return nil, -1 // -1 = 再接続ループへ戻るシグナル / signal to return to the reconnect loop
 	}
 	if resp.StatusCode >= 400 {
 		log.Printf("API HTTP %d", resp.StatusCode)
@@ -231,7 +234,7 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
 		if r.LocalName() == cfg.deviceName {
 			a.StopScan()
-			// non-blocking: 複数回検出されても最初の1件だけ確定
+			// non-blocking: 複数回検出されても最初の1件だけ確定 / keep only the first hit even if detected multiple times
 			select {
 			case found <- r:
 			default:
@@ -247,7 +250,7 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 		log.Printf("Found: %s", r.Address)
 		return r, nil
 	case <-time.After(cfg.scanTimeout):
-		adapter.StopScan() // タイムアウト時も必ずスキャンを停止
+		adapter.StopScan() // タイムアウト時も必ずスキャンを停止 / always stop scanning on timeout too
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	}
 }
@@ -256,7 +259,7 @@ func run(cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
-	var cached *payload  // セッションをまたいで最後の正常値を保持
+	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	for {
 		result, err := findDevice(cfg)
 		if err != nil {
@@ -298,6 +301,7 @@ func mustUUID(s string) bluetooth.UUID {
 
 func runSession(dev *bluetooth.Device, token string, cfg config, cached **payload) error {
 	// WinRT では Connect 直後に discover が失敗することがある → 最大3回リトライ
+	// On WinRT, discovery can fail right after Connect → retry up to 3 times.
 	var svc []bluetooth.DeviceService
 	for attempt := 1; attempt <= 3; attempt++ {
 		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
@@ -329,6 +333,7 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 	rx := chars[0]
 
 	// 接続直後、前セッションの cached があればすぐ送って No data を解消
+	// Right after connecting, send the previous session's cached value to clear "No data".
 	if *cached != nil {
 		(*cached).PI = int(cfg.pollInterval.Seconds())
 		if data, err := json.Marshal(*cached); err == nil {
@@ -342,6 +347,7 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 		p, retryAfter := fetchUsage(token, cfg)
 
 		// retryAfter == -1 は 401 シグナル → セッション終了してトークン再読み込み
+		// retryAfter == -1 is the 401 signal → end session and reload the token.
 		if retryAfter < 0 {
 			return fmt.Errorf("token expired: reconnect to reload credentials")
 		}
@@ -349,7 +355,7 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 		var send *payload
 		switch {
 		case p != nil:
-			*cached = p  // セッションをまたいで保持
+			*cached = p  // セッションをまたいで保持 / keep across sessions
 			send = p
 		case *cached != nil:
 			send = *cached

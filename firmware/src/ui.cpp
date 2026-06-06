@@ -3,12 +3,12 @@
 
 static lv_obj_t *arc_week;
 static lv_obj_t *arc_session;
-static lv_obj_t *arc_limit_session;  // 内円マーカー（セッション用）
-static lv_obj_t *arc_limit_week;     // 外円マーカー（週間用）
+static lv_obj_t *arc_limit_session;  // 内円マーカー（セッション用） / inner-ring marker (session)
+static lv_obj_t *arc_limit_week;     // 外円マーカー（週間用） / outer-ring marker (weekly)
 static lv_obj_t *label_session;
 static lv_obj_t *label_week;
 static lv_obj_t *label_limit;
-static lv_obj_t *label_offline;      // オフライン時メッセージ
+static lv_obj_t *label_offline;      // オフライン時メッセージ / message shown when offline
 
 static lv_display_t *disp;
 static lv_color_t    draw_buf_data[240 * 20];
@@ -52,37 +52,37 @@ void ui_init(int w, int h) {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
 
-    // 外円: 週間 / 青 / 220px / 幅12
+    // 外円: 週間 / 青 / 220px / 幅12 / Outer ring: weekly / blue / 220px / width 12
     arc_week          = make_arc(scr, 220, lv_color_hex(0x0080FF), 12);
-    // 内円: セッション / 緑 / 170px / 幅12
+    // 内円: セッション / 緑 / 170px / 幅12 / Inner ring: session / green / 170px / width 12
     arc_session       = make_arc(scr, 170, lv_color_hex(0x00CC44), 12);
-    // セッションリミットマーカー: 内円寄り / 196px / 幅4
+    // セッションリミットマーカー: 内円寄り / 196px / 幅4 / Session limit marker: near inner ring / 196px / width 4
     arc_limit_session = make_arc(scr, 196, lv_color_hex(0xFF4400), 4);
-    // 週間リミットマーカー: 外円寄り / 236px / 幅4
+    // 週間リミットマーカー: 外円寄り / 236px / 幅4 / Weekly limit marker: near outer ring / 236px / width 4
     arc_limit_week    = make_arc(scr, 236, lv_color_hex(0xFF4400), 4);
 
-    // セッション% 大ラベル
+    // セッション% 大ラベル / Session % large label
     label_session = lv_label_create(scr);
     lv_obj_set_style_text_font(label_session, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(label_session, lv_color_white(), 0);
     lv_label_set_text(label_session, "0%");
     lv_obj_align(label_session, LV_ALIGN_CENTER, 0, -20);
 
-    // 週間% 小ラベル
+    // 週間% 小ラベル / Weekly % small label
     label_week = lv_label_create(scr);
     lv_obj_set_style_text_font(label_week, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(label_week, lv_color_hex(0x0080FF), 0);
     lv_label_set_text(label_week, "week 0%");
     lv_obj_align(label_week, LV_ALIGN_CENTER, 0, 20);
 
-    // リミット & 編集対象ラベル
+    // リミット & 編集対象ラベル / Limit & edit-target label
     label_limit = lv_label_create(scr);
     lv_obj_set_style_text_font(label_limit, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(label_limit, lv_color_hex(0xFF4400), 0);
     lv_label_set_text(label_limit, "! S:80%");
     lv_obj_align(label_limit, LV_ALIGN_CENTER, 0, 45);
 
-    // オフライン時メッセージ（通常は非表示）
+    // オフライン時メッセージ（通常は非表示） / Offline message (hidden by default)
     label_offline = lv_label_create(scr);
     lv_obj_set_style_text_font(label_offline, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(label_offline, lv_color_white(), 0);
@@ -101,7 +101,7 @@ void ui_set_offline(bool offline) {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, offline ? lv_color_hex(0x333333) : lv_color_black(), 0);
 
-    // ゲージ・ラベルの表示/非表示を切り替え
+    // ゲージ・ラベルの表示/非表示を切り替え / Toggle visibility of gauges and labels
     if (offline) {
         lv_obj_add_flag(arc_session,       LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(arc_week,          LV_OBJ_FLAG_HIDDEN);
@@ -124,7 +124,7 @@ void ui_set_offline(bool offline) {
 }
 
 void ui_update(int session_pct, int week_pct, int session_limit, int week_limit, edit_target_t target) {
-    // BLE受信値など範囲外が来ても描画が崩れないようクランプ
+    // BLE受信値など範囲外が来ても描画が崩れないようクランプ / Clamp so out-of-range values (e.g. from BLE) don't break rendering
     session_pct   = constrain(session_pct,   0, 100);
     week_pct      = constrain(week_pct,      0, 100);
     session_limit = constrain(session_limit, 0, 100);
@@ -134,13 +134,13 @@ void ui_update(int session_pct, int week_pct, int session_limit, int week_limit,
     lv_arc_set_angles(arc_week,    0, week_pct    * 360 / 100);
 
     auto set_marker = [](lv_obj_t *arc, int pct) {
-        int start = min(pct * 360 / 100, 358);  // 常に2°のセグメントを確保
+        int start = min(pct * 360 / 100, 358);  // 常に2°のセグメントを確保 / always keep a 2° segment
         lv_arc_set_angles(arc, start, start + 2);
     };
     set_marker(arc_limit_session, session_limit);
     set_marker(arc_limit_week,    week_limit);
 
-    // 編集中のマーカーを明るく、非編集を暗く
+    // 編集中のマーカーを明るく、非編集を暗く / Brighten the marker being edited, dim the other
     lv_color_t active   = lv_color_hex(0xFF4400);
     lv_color_t inactive = lv_color_hex(0x662200);
     lv_obj_set_style_arc_color(arc_limit_session,
@@ -155,7 +155,7 @@ void ui_update(int session_pct, int week_pct, int session_limit, int week_limit,
     snprintf(buf, sizeof(buf), "week %d%%", week_pct);
     lv_label_set_text(label_week, buf);
 
-    // 編集中のリミット値を表示
+    // 編集中のリミット値を表示 / Show the limit value being edited
     if (target == EDIT_SESSION) {
         snprintf(buf, sizeof(buf), "! S:%d%%", session_limit);
     } else {
