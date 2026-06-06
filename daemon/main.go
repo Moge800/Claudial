@@ -422,9 +422,26 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 }
 
 func main() {
-	log.SetFlags(log.Ltime)
+	log.SetFlags(log.Ldate | log.Ltime)
 	cfg := loadConfig()
-	if err := run(cfg); err != nil {
-		log.Fatal(err)
+	setupLogFile()
+	runWithTray(cfg)
+}
+
+// setupLogFile はexeと同じフォルダにdaemon.logを作成しlogの出力先に追加する。
+// setupLogFile creates daemon.log next to the executable and tees log output to it.
+func setupLogFile() {
+	exe, err := os.Executable()
+	if err != nil {
+		return
 	}
+	logPath := filepath.Join(filepath.Dir(exe), "daemon.log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Printf("Cannot open log file %s: %v", logPath, err)
+		return
+	}
+	// 標準出力とファイルの両方に出力 / Write to both stdout and log file.
+	log.SetOutput(io.MultiWriter(os.Stdout, f))
+	log.Printf("Logging to %s", logPath)
 }
