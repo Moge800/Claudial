@@ -40,9 +40,11 @@ func onReady(cfg config) {
 	// Quitで再接続ループをキャンセルできるようcontextを渡す。
 	// Pass a cancellable context so Quit stops the reconnect loop cleanly.
 	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 
 	// daemonのメインループをgoroutineで実行 / Run daemon loop in background goroutine.
 	go func() {
+		defer close(done)
 		if err := run(ctx, cfg); err != nil {
 			log.Printf("daemon error: %v", err)
 		}
@@ -58,9 +60,10 @@ func onReady(cfg config) {
 			// Create .env with defaults if absent — log-only is invisible with windowsgui.
 			openOrCreateConfig()
 		case <-mQuit.ClickedCh:
-			// daemonのgoroutineをキャンセルしてからsystrayを終了する。
-			// Cancel the daemon goroutine before stopping the systray.
+			// daemonのgoroutineが終了してからsystrayを閉じる。
+			// Cancel the daemon goroutine and wait for it to finish before quitting the tray.
 			cancel()
+			<-done
 			systray.Quit()
 			return
 		}

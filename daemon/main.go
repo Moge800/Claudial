@@ -247,7 +247,7 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 
 var adapter = bluetooth.DefaultAdapter
 
-func findDevice(cfg config) (bluetooth.ScanResult, error) {
+func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 	log.Printf("Scanning for '%s'...", cfg.deviceName)
 
 	found := make(chan bluetooth.ScanResult, 1)
@@ -272,6 +272,9 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 	case <-time.After(cfg.scanTimeout):
 		adapter.StopScan() // タイムアウト時も必ずスキャンを停止 / always stop scanning on timeout too
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
+	case <-ctx.Done():
+		adapter.StopScan() // キャンセル時もスキャンを停止 / stop scan on context cancel
+		return bluetooth.ScanResult{}, ctx.Err()
 	}
 }
 
@@ -294,7 +297,7 @@ func run(ctx context.Context, cfg config) error {
 		default:
 		}
 
-		result, err := findDevice(cfg)
+		result, err := findDevice(ctx, cfg)
 		if err != nil {
 			log.Printf("Scan error: %v. Retrying in 5s...", err)
 			select {
@@ -332,7 +335,7 @@ func run(ctx context.Context, cfg config) error {
 			}
 			continue
 		}
-		if err := runSession(&dev, token, cfg, &cached); err != nil {
+		if err := runSession(ctx, &dev, token, cfg, &cached); err != nil {
 			log.Printf("Session error: %v", err)
 		}
 		dev.Disconnect()
@@ -356,12 +359,16 @@ func mustUUID(s string) bluetooth.UUID {
 	return u
 }
 
-func runSession(dev *bluetooth.Device, token string, cfg config, cached **payload) error {
+func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg config, cached **payload) error {
 	// WinRT では Connect 直後に discover が失敗することがある → 最大3回リトライ
 	// On WinRT, discovery can fail right after Connect → retry up to 3 times.
 	var svc []bluetooth.DeviceService
 	for attempt := 1; attempt <= 3; attempt++ {
-		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(attempt) * 500 * time.Millisecond):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		var discErr error
 		svc, discErr = dev.DiscoverServices([]bluetooth.UUID{
 			mustUUID("4c41555a-4465-7669-6365-000000000001"),
@@ -440,7 +447,12 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 			return fmt.Errorf("BLE write: %w", err)
 		}
 		log.Printf("Sent: %s", data)
-		time.Sleep(wait)
+		// キャンセル時はポーリングスリープを中断 / Interrupt poll sleep on context cancel.
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
