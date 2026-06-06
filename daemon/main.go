@@ -165,6 +165,11 @@ func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retr
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		// コンテキストキャンセル（Quit）は正常終了 — エラーログを出さない。
+		// Context cancellation (Quit) is a clean exit — don't log as an error.
+		if ctx.Err() != nil {
+			return nil, 0
+		}
 		log.Printf("API error: %v", err)
 		return nil, 0
 	}
