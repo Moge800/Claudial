@@ -14,6 +14,10 @@ daemon/.venv/
 __pycache__/
 *.pyc
 
+# Go build artifacts
+daemon/*.exe
+daemon/clawdial-daemon
+
 # OS
 .DS_Store
 Thumbs.db
@@ -45,8 +49,8 @@ Thumbs.db
 
 
 # Fortran module files
-*.mod
 *.smod
+# *.mod は除外しない（Go の go.mod と衝突するため）
 
 # Compiled Static libraries
 *.lai
