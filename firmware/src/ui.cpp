@@ -123,12 +123,16 @@ void ui_set_offline(bool offline) {
     }
 }
 
-void ui_update(int session_pct, int week_pct, int session_limit, int week_limit, edit_target_t target) {
+void ui_update(int session_pct, int week_pct, int session_limit, int week_limit, edit_target_t target, bool stale) {
     // BLE受信値など範囲外が来ても描画が崩れないようクランプ / Clamp so out-of-range values (e.g. from BLE) don't break rendering
     session_pct   = constrain(session_pct,   0, 100);
     week_pct      = constrain(week_pct,      0, 100);
     session_limit = constrain(session_limit, 0, 100);
     week_limit    = constrain(week_limit,    0, 100);
+
+    // stale時はアーク色を暗くして「古い値」を示す / Dim arc colors when showing stale (cached) values
+    lv_obj_set_style_arc_color(arc_session, stale ? lv_color_hex(0x006622) : lv_color_hex(0x00CC44), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(arc_week,    stale ? lv_color_hex(0x004080) : lv_color_hex(0x0080FF), LV_PART_INDICATOR);
 
     lv_arc_set_angles(arc_session, 0, session_pct * 360 / 100);
     lv_arc_set_angles(arc_week,    0, week_pct    * 360 / 100);

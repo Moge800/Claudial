@@ -138,7 +138,8 @@ void loop() {
                 is_offline = false;
                 ui_set_offline(false);
             }
-            ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
+            // stale=true は前回cached値（レート制限中など）/ stale=true means cached value (e.g. rate-limited)
+            ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, d.stale);
         }
         // has_data==false のときは何もしない（初回接続待ち）
         // Do nothing while has_data==false (waiting for first connection).
@@ -183,6 +184,15 @@ void loop() {
     }
 
     // 警告レベル判定 / Determine warning level
+    // オフライン中は警告を抑制してブザーも止める / Suppress all warnings while offline
+    if (is_offline) {
+        if (warn_state != WARN_NONE) {
+            warn_state = WARN_NONE;
+            muted = false;
+            ui_set_alert(false);
+            noTone(BUZZER_PIN);
+        }
+    } else {
     warn_state_t ws = max(calc_warn(session_pct, session_limit),
                           calc_warn(week_pct, week_limit));
 
@@ -196,9 +206,10 @@ void loop() {
         noTone(BUZZER_PIN);
     }
     warn_state = ws;
+    } // end !is_offline
 
     // WARN_LIMIT: 500ms周期でフラッシュ＋ビープ / WARN_LIMIT: flash + beep every 500ms
-    if (warn_state == WARN_LIMIT && !muted) {
+    if (!is_offline && warn_state == WARN_LIMIT && !muted) {
         if (now - last_alarm_ms >= 500) {
             last_alarm_ms = now;
             alert_flash = !alert_flash;

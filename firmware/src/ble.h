@@ -12,6 +12,7 @@ struct BleData {
     int           week_reset;    // wr (分) / wr (minutes)
     int           poll_interval; // pi (秒) daemonのポーリング間隔 / pi (seconds) daemon's poll interval
     bool          ok;
+    bool          stale;         // st 値が古い（cachedフォールバック） / st value is stale (cached fallback)
     unsigned long received_ms;   // onWrite が呼ばれた millis() / millis() when onWrite was called
 };
 

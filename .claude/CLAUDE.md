@@ -76,13 +76,16 @@ The test: someone reading `.docs/decisions.md` later can understand *why* the co
 
 ## 6. Project Context
 
-- **gomc-rest-gui** is a lightweight debugging GUI for [gomc-rest](https://github.com/Moge800/gomc-rest)
-  (Mitsubishi PLC REST gateway). It is a standalone HTTP client; **never modify or embed gomc-rest**.
-- Stack: **Wails v2 (Go) + React/TypeScript**. Go backend in `app.go` / `client_*.go`;
-  UI in `frontend/src/` (tabs in `frontend/src/tabs/`, i18n in `frontend/src/i18n/`).
-- UI is **bilingual (ja/en)** — add new strings to **both** `ja.ts` and `en.ts`.
-- After changing Go bound methods, run `wails generate module`. Verify with `wails build`.
-- Target is a single Windows `.exe` for closed/air-gapped networks.
+- **Clawdial** is a Claude Code usage monitor: an M5Stack Dial (ESP32-S3) displays real-time
+  session/weekly API usage via a dual-arc LVGL gauge, driven by a Go daemon over BLE.
+- Stack: **PlatformIO + LVGL 9.x + NimBLE-Arduino** (firmware in `firmware/src/`);
+  **Go daemon** (in `daemon/`) using `tinygo.org/x/bluetooth` and `godotenv`.
+- BLE GATT: custom service UUID `4c41555a-...-0001`, RX characteristic `...-0002`.
+  JSON payload fields: `s`, `sr`, `w`, `wr`, `pi`, `ok`, `st` — see README BLE Protocol section.
+- OAuth token read from `~/.claude/.credentials.json`; usage from Anthropic rate-limit headers.
+- Firmware NVS (Preferences) stores: device name, screen rotation, session/week limits.
+- After changing firmware, flash with `pio run -t upload --upload-port COM3`.
+- Daemon is a single Windows `.exe`; token stays on the host PC (never sent to network).
 
 ## 7. Git Workflow
 

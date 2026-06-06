@@ -144,7 +144,7 @@ Shares the same UUID as Clawdmeter.
 JSON payload (daemon → device):
 
 ```json
-{ "s": 45, "sr": 120, "w": 28, "wr": 7200, "ok": true }
+{ "s": 45, "sr": 120, "w": 28, "wr": 7200, "pi": 60, "ok": true, "st": false }
 ```
 
 | Field | Meaning |
@@ -153,7 +153,9 @@ JSON payload (daemon → device):
 | `sr` | Minutes until session reset |
 | `w` | Weekly usage (%) |
 | `wr` | Minutes until weekly reset |
-| `ok` | Fetch success flag |
+| `pi` | Poll interval (seconds) — used by the device to compute the offline timeout (`pi×2+30s`) |
+| `ok` | Fetch success flag (`false` = token error; triggers immediate offline screen) |
+| `st` | Stale flag — `true` when sending a cached previous value (e.g. during rate limiting); device dims the gauge colors |
 
 ---
 

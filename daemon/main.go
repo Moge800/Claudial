@@ -129,7 +129,8 @@ type payload struct {
 	W  int  `json:"w"`
 	WR int  `json:"wr"`
 	PI int  `json:"pi"` // ポーリング間隔（秒）— M5側のタイムアウト算出用 / poll interval (sec) — used by M5 to derive its timeout
-	Ok bool `json:"ok"`
+	Ok bool `json:"ok"` // 取得成功フラグ / fetch success flag
+	St bool `json:"st"` // 値が古い（cachedフォールバック）/ value is stale (cached fallback)
 }
 
 func clamp(v, lo, hi int) int {
@@ -336,6 +337,7 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 	// Right after connecting, send the previous session's cached value to clear "No data".
 	if *cached != nil {
 		(*cached).PI = int(cfg.pollInterval.Seconds())
+		(*cached).St = true // 再接続直後はまだフェッチ前 = 古い値 / not yet re-fetched = stale
 		if data, err := json.Marshal(*cached); err == nil {
 			if _, err := rx.WriteWithoutResponse(data); err == nil {
 				log.Printf("Sent cached on connect: %s", data)
@@ -355,11 +357,13 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 		var send *payload
 		switch {
 		case p != nil:
+			p.St = false // 取得成功 = 最新 / fetch succeeded = fresh
 			*cached = p  // セッションをまたいで保持 / keep across sessions
 			send = p
 		case *cached != nil:
 			send = *cached
-			log.Printf("Using cached: %+v", *send)
+			send.St = true // フォールバック = 古い値 / fallback = stale value
+			log.Printf("Using cached (stale): %+v", *send)
 		default:
 			send = &payload{Ok: false}
 		}
