@@ -153,8 +153,9 @@ void loop() {
         int delta = enc - last_enc;
         last_enc = enc;
 
-        // 画面180°回転時はエンコーダ方向も反転 / Invert encoder direction when screen is rotated 180°
-        int adj = (display_rotation == 2) ? -delta : delta;
+        // rotation=0(USB下/台座)でエンコーダ反転、rotation=2(USB上)では正方向
+        // Invert encoder when rotation=0 (USB at bottom/stand), normal when rotation=2 (USB at top)
+        int adj = (display_rotation == 0) ? -delta : delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
             storage_set_session_limit(session_limit);
@@ -166,9 +167,26 @@ void loop() {
         beep(adj > 0 ? 1200 : 800, 20);
     }
 
-    // タッチ: 消音 or 編集対象切り替え / Touch: mute alarm or switch edit target
+    // タッチ: 消音 or 編集対象切り替え、長押しで画面反転 / Touch: mute, switch edit target, long-press to flip screen
+    static unsigned long touch_start_ms = 0;
+    static bool          long_press_fired = false;
     if (M5.Touch.getCount() > 0) {
         auto t = M5.Touch.getDetail();
+        if (t.wasPressed()) {
+            touch_start_ms   = now;
+            long_press_fired = false;
+        }
+        // 長押し判定（1秒）/ Long-press detection (1 second)
+        if (!long_press_fired && touch_start_ms > 0 &&
+            (now - touch_start_ms >= 1000)) {
+            long_press_fired = true;
+            // rotation トグル → NVS保存 → 再起動 / toggle rotation, save to NVS, reboot
+            uint8_t new_rot = (display_rotation == 0) ? 2 : 0;
+            storage_set_rotation(new_rot);
+            beep(800, 300);
+            delay(350);
+            ESP.restart();
+        }
         if (t.wasPressed()) {
             if (warn_state == WARN_LIMIT && !muted) {
                 muted = true;
@@ -180,6 +198,8 @@ void loop() {
                 beep(1500, 40);
             }
         }
+    } else {
+        touch_start_ms = 0;
     }
 
     // 警告レベル判定 / Determine warning level

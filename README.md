@@ -117,8 +117,20 @@ CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 | Action | Behavior |
 |--------|----------|
 | Rotate dial | Adjust active limit ±1% |
-| Touch (normal) | Switch edit target: Session ↔ Week |
+| Touch (short) | Switch edit target: Session ↔ Week |
 | Touch (during alert) | Mute alert |
+| Touch (hold 1 sec) | Flip screen orientation 180° and reboot |
+
+### Screen Orientation
+
+The device stores the screen orientation in NVS (non-volatile storage), so it persists across reboots without reflashing.
+
+| Orientation | When to use |
+|-------------|-------------|
+| USB at bottom (default) | With 3D-printed stand |
+| USB at top | Cable-hanging / direct USB connection |
+
+Long-press the touch screen for 1 second to toggle between orientations. The device beeps and reboots automatically.
 
 ---
 
