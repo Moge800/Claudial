@@ -19,7 +19,7 @@ Just place it on your desk and turn the dial. Session and weekly usage are displ
 
 A 3D-printed stand keeps the dial upright with the USB port at the bottom.
 
-> 🖨️ Stand design: [Qiita: M5Stack Dial 台座](https://qiita.com/_asa08_/items/b437b7b41027e911b3b3)
+> 🖨️ Stand design: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand)
 
 With the stand, long-press the touch to set orientation to "USB at bottom" (the default).
 

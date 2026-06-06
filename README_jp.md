@@ -19,7 +19,7 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 3Dプリント台座を使うと、USBポートを下にした状態でダイヤルを自立させられます。
 
-> 🖨️ 台座データ: [Qiita: M5Stack Dial 台座](https://qiita.com/_asa08_/items/b437b7b41027e911b3b3)
+> 🖨️ 台座データ: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand)
 
 台座を使う場合は、タッチ長押しで向きを「USB下」（デフォルト）に設定してください。
 
