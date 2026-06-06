@@ -75,7 +75,7 @@ Description=Clawdial BLE Daemon
 After=network.target
 
 [Service]
-ExecStart=${DAEMON_PATH}
+ExecStart="${DAEMON_PATH}"
 Restart=on-failure
 RestartSec=5
 

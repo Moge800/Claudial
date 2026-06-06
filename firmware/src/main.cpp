@@ -18,6 +18,12 @@ static const int ENC_BTN_PIN = 42;
 
 static volatile int enc_count = 0;
 
+static int last_enc = 0;
+static unsigned long last_lvgl_tick;  // setup() 末尾で millis() 初期化（初回 delta=0）
+static unsigned long last_alarm_ms  = 0;
+static unsigned long last_ble_ms    = 0;
+static bool alert_flash = false;
+
 static int session_limit;
 static int week_limit;
 static int session_pct = 0;
@@ -72,14 +78,11 @@ void setup() {
     String devName = storage_get_device_name();
     ble_init(devName.c_str());
 
+    last_lvgl_tick = millis();  // 初回 delta=0 にするため setup 末尾で初期化
+
     beep(1000, 80);
 }
 
-static int last_enc = 0;
-static unsigned long last_lvgl_tick = 0;
-static unsigned long last_alarm_ms  = 0;
-static unsigned long last_ble_ms    = 0;
-static bool alert_flash = false;
 
 void loop() {
     M5.update();

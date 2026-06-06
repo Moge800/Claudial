@@ -165,6 +165,10 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 		log.Printf("Rate limited. Retry after %.0fs", wait.Seconds())
 		return nil, wait
 	}
+	if resp.StatusCode == 401 {
+		log.Printf("API HTTP 401: token expired or invalid — run 'claude login' to refresh")
+		return nil, 0
+	}
 	if resp.StatusCode >= 400 {
 		log.Printf("API HTTP %d", resp.StatusCode)
 		return nil, 0
