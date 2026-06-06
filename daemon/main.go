@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -40,8 +41,9 @@ type config struct {
 
 func loadConfig() config {
 	// 実行ファイルと同じディレクトリの .env を読む（なければ無視）
-	exe, _ := os.Executable()
-	_ = godotenv.Load(filepath.Join(filepath.Dir(exe), ".env"))
+	if exe, err := os.Executable(); err == nil {
+		_ = godotenv.Load(filepath.Join(filepath.Dir(exe), ".env"))
+	}
 	// カレントディレクトリの .env も読む（開発時用）
 	_ = godotenv.Load()
 
@@ -154,7 +156,10 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 		log.Printf("API error: %v", err)
 		return nil, 0
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body) // keep-alive のためボディを読み切る
+		resp.Body.Close()
+	}()
 
 	if resp.StatusCode == 429 {
 		wait := cfg.pollInterval

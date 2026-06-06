@@ -86,7 +86,7 @@ void ui_init(int w, int h) {
     label_offline = lv_label_create(scr);
     lv_obj_set_style_text_font(label_offline, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(label_offline, lv_color_white(), 0);
-    lv_label_set_text(label_offline, "Session expired\nrun: claude login");
+    lv_label_set_text(label_offline, "No data\nCheck daemon\nor: claude login");
     lv_obj_set_style_text_align(label_offline, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label_offline, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(label_offline, LV_OBJ_FLAG_HIDDEN);
