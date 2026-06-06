@@ -11,7 +11,17 @@ Just place it on your desk and turn the dial. Session and weekly usage are displ
 
 ![Clawdial on desk](assets/device.jpg)
 
-> 📹 [Alert demo video (red flash + beep)](assets/alert_demo.mov)
+> 📹 [Alert demo video (red flash + beep)](assets/alert_demo.mp4)
+
+---
+
+## Stand
+
+A 3D-printed stand keeps the dial upright with the USB port at the bottom.
+
+> 🖨️ Stand design: [Qiita: M5Stack Dial 台座](https://qiita.com/_asa08_/items/b437b7b41027e911b3b3)
+
+With the stand, long-press the touch to set orientation to "USB at bottom" (the default).
 
 ---
 
