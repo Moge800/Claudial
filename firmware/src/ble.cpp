@@ -6,23 +6,30 @@
 
 // Clawdmeterと共通のUUID
 #define SVC_UUID  "4c41555a-4465-7669-6365-000000000001"
-#define RX_UUID   "4c41555a-4465-7669-6365-000000000002"  // write (daemon→device)
-#define TX_UUID   "4c41555a-4465-7669-6365-000000000003"  // notify (device→daemon)
+#define RX_UUID   "4c41555a-4465-7669-6365-000000000002"
+#define TX_UUID   "4c41555a-4465-7669-6365-000000000003"
 
-// NimBLEコールバック（別タスク）とloop()の競合をFreeRTOSクリティカルセクションで防ぐ
-static portMUX_TYPE   data_mux  = portMUX_INITIALIZER_UNLOCKED;
-static BleData        latest_data = {0, 0, 0, 0, false};
-static bool           connected  = false;
+// connected / latest_data 両方を同じ mutex で保護
+static portMUX_TYPE data_mux   = portMUX_INITIALIZER_UNLOCKED;
+static BleData      latest_data = {0, 0, 0, 0, false};
+static bool         connected   = false;
 
-class ServerCB : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer *s)    override { connected = true;  }
-    void onDisconnect(NimBLEServer *s) override {
+// ヒープ確保なし・static インスタンスを使用
+static class ServerCB : public NimBLEServerCallbacks {
+    void onConnect(NimBLEServer *) override {
+        taskENTER_CRITICAL(&data_mux);
+        connected = true;
+        taskEXIT_CRITICAL(&data_mux);
+    }
+    void onDisconnect(NimBLEServer *) override {
+        taskENTER_CRITICAL(&data_mux);
         connected = false;
+        taskEXIT_CRITICAL(&data_mux);
         NimBLEDevice::startAdvertising();
     }
-};
+} serverCB;
 
-class RxCB : public NimBLECharacteristicCallbacks {
+static class RxCB : public NimBLECharacteristicCallbacks {
     void onWrite(NimBLECharacteristic *c) override {
         std::string val = c->getValue();
         JsonDocument doc;
@@ -39,19 +46,19 @@ class RxCB : public NimBLECharacteristicCallbacks {
         latest_data = d;
         taskEXIT_CRITICAL(&data_mux);
     }
-};
+} rxCB;
 
 void ble_init(const char *device_name) {
     NimBLEDevice::init(device_name);
 
     NimBLEServer *server = NimBLEDevice::createServer();
-    server->setCallbacks(new ServerCB());
+    server->setCallbacks(&serverCB);
 
     NimBLEService *svc = server->createService(SVC_UUID);
 
     NimBLECharacteristic *rx = svc->createCharacteristic(
         RX_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
-    rx->setCallbacks(new RxCB());
+    rx->setCallbacks(&rxCB);
 
     svc->createCharacteristic(TX_UUID, NIMBLE_PROPERTY::NOTIFY);
 
@@ -62,7 +69,12 @@ void ble_init(const char *device_name) {
     adv->start();
 }
 
-bool ble_is_connected() { return connected; }
+bool ble_is_connected() {
+    taskENTER_CRITICAL(&data_mux);
+    bool c = connected;
+    taskEXIT_CRITICAL(&data_mux);
+    return c;
+}
 
 BleData ble_get_data() {
     taskENTER_CRITICAL(&data_mux);

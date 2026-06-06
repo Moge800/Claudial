@@ -176,7 +176,7 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 
 	resetMin := func(ts string) int {
 		f, err := strconv.ParseFloat(strings.TrimSpace(ts), 64)
-		if err != nil || math.IsInf(f, 0) {
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
 			return 0
 		}
 		mins := (f - now) / 60.0
