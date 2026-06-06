@@ -298,15 +298,21 @@ func runSession(dev *bluetooth.Device, token string, cfg config) error {
 	svc, err := dev.DiscoverServices([]bluetooth.UUID{
 		mustUUID("4c41555a-4465-7669-6365-000000000001"),
 	})
-	if err != nil || len(svc) == 0 {
+	if err != nil {
 		return fmt.Errorf("discover service: %w", err)
+	}
+	if len(svc) == 0 {
+		return fmt.Errorf("discover service: no matching service found")
 	}
 
 	chars, err := svc[0].DiscoverCharacteristics([]bluetooth.UUID{
 		mustUUID(rxUUID),
 	})
-	if err != nil || len(chars) == 0 {
+	if err != nil {
 		return fmt.Errorf("discover characteristic: %w", err)
+	}
+	if len(chars) == 0 {
+		return fmt.Errorf("discover characteristic: RX characteristic not found")
 	}
 	rx := chars[0]
 

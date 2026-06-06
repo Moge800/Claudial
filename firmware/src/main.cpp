@@ -111,7 +111,7 @@ void loop() {
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
         } else {
             offline_count++;
-            if (!is_offline && offline_count >= 3) {
+            if (!is_offline && offline_count >= 1) {
                 is_offline = true;
                 ui_set_offline(true);
             }
