@@ -14,7 +14,7 @@ static portMUX_TYPE data_mux   = portMUX_INITIALIZER_UNLOCKED;
 static BleData      latest_data = {0, 0, 0, 0, 0, false, false, 0};
 static bool         connected   = false;
 
-// ヒープ確保なし・static インスタンスを使用 / No heap allocation; use a static instance
+// コールバックオブジェクトをstatic化してヒープ確保を回避 / Use static callback instances to avoid heap allocation for the objects themselves
 static class ServerCB : public NimBLEServerCallbacks {
     void onConnect(NimBLEServer *) override {
         taskENTER_CRITICAL(&data_mux);
