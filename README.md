@@ -32,11 +32,20 @@ Clawdial/
 
 ---
 
+## 必要要件
+
+| 項目 | 要件 |
+|------|------|
+| [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み |
+| [Go 1.21+](https://go.dev/dl/) | デーモンのビルド |
+| [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
+| Bluetooth LE 5.0 対応アダプタ | PC 側 BLE 通信 |
+
+---
+
 ## セットアップ
 
 ### ファームウェア
-
-[PlatformIO](https://platformio.org/) が必要です。
 
 ```bash
 cd firmware
@@ -51,11 +60,22 @@ pio run -t upload
 
 ### デーモン（PC側）
 
-Go 1.21 以上が必要です。
+インストールスクリプトを使う方法（推奨）：
+
+```bash
+# Windows
+daemon\install.bat
+
+# macOS / Linux
+chmod +x daemon/install.sh
+daemon/install.sh
+```
+
+手動でビルドする場合：
 
 ```bash
 cd daemon
-go build -o clawdial-daemon
+go build -o clawdial-daemon .
 ./clawdial-daemon        # Linux / macOS
 clawdial-daemon.exe      # Windows
 ```
