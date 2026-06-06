@@ -80,7 +80,7 @@ The test: someone reading `.docs/decisions.md` later can understand *why* the co
   session/weekly API usage via a dual-arc LVGL gauge, driven by a Go daemon over BLE.
 - Stack: **PlatformIO + LVGL 9.x + NimBLE-Arduino** (firmware in `firmware/src/`);
   **Go daemon** (in `daemon/`) using `tinygo.org/x/bluetooth` and `godotenv`.
-- BLE GATT: custom service UUID `4c41555a-...-0001`, RX characteristic `...-0002`.
+- BLE GATT: Clawdial-specific RFC 4122 v4 UUIDs — service `29590732-a70c-4ea9-a739-000000000001`, RX characteristic `...-0002`, TX characteristic `...-0003`.
   JSON payload fields: `s`, `sr`, `w`, `wr`, `pi`, `ok`, `st` — see README BLE Protocol section.
 - OAuth token read from `~/.claude/.credentials.json`; usage from Anthropic rate-limit headers.
 - Firmware NVS (Preferences) stores: device name, screen rotation, session/week limits.
