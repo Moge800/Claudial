@@ -1,79 +1,80 @@
 # Clawdial
 
+**[日本語版 README はこちら](README_jp.md)**
+
 > Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin).
 > BLE UUID / payload format and the rate-limit header approach are derived from that project.
 
-M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
+A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 
-デスクに置いてダイヤルを回すだけ。セッション・週間の使用率をリアルタイム表示し、
-リミットに近づくと警告音で知らせます。
-
----
-
-## ハードウェア
-
-| 項目 | 内容 |
-|------|------|
-| ボード | M5Stack Dial v1.1 |
-| MCU | ESP32-S3（M5StampS3） |
-| 画面 | 1.28インチ 丸型IPS LCD 240×240 |
-| 入力 | ロータリーエンコーダ + タッチ |
-| 接続 | BLE 5.0 |
+Just place it on your desk and turn the dial. Session and weekly usage are displayed in real time, with audio alerts as you approach your limit.
 
 ---
 
-## 構成
+## Hardware
+
+| Item | Details |
+|------|---------|
+| Board | M5Stack Dial v1.1 |
+| MCU | ESP32-S3 (M5StampS3) |
+| Display | 1.28" Round IPS LCD 240×240 |
+| Input | Rotary encoder + touch |
+| Connectivity | BLE 5.0 |
+
+---
+
+## Repository Structure
 
 ```
 Clawdial/
-├── firmware/   PlatformIO プロジェクト（M5Stack Dial 用ファームウェア）
-└── daemon/     PC 側デーモン（Go、Windows / macOS / Linux）
+├── firmware/   PlatformIO project (M5Stack Dial firmware)
+└── daemon/     PC-side daemon (Go, Windows / macOS / Linux)
 ```
 
 ---
 
-## 必要要件
+## Requirements
 
-| 項目 | 要件 |
-|------|------|
-| [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み |
-| [Go 1.26+](https://go.dev/dl/) | デーモンのビルド |
-| [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
-| Bluetooth LE 5.0 対応アダプタ | PC 側 BLE 通信 |
+| Item | Requirement |
+|------|------------|
+| [PlatformIO](https://platformio.org/) | Firmware build & flash |
+| [Go 1.26+](https://go.dev/dl/) | Daemon build |
+| [Claude Code](https://claude.ai/code) | Auth credentials (`claude login`) |
+| Bluetooth LE 5.0 adapter | PC-side BLE communication |
 
 ---
 
-## セットアップ
+## Setup
 
-### ファームウェア
+### Firmware
 
-M5Stack Dial を PC に USB-C で接続し、以下を実行します（**書き込み時のみ USB 接続が必要**です）。
+Connect M5Stack Dial to your PC via USB-C (**USB is only needed for flashing**).
 
 ```bash
 cd firmware
 pio run -t upload
 ```
 
-書き込み完了後は USB を抜いてかまいません。通常使用は USB-C 給電（充電器など）＋ BLE 通信です。
+After flashing, you can unplug the USB cable. Normal use is USB-C power (charger, etc.) + BLE.
 
-**画面向きの調整**
+**Display orientation**
 
-ケーブルの取り回しに合わせて `src/main.cpp` の `DISPLAY_ROTATION` を変更してください。
+Adjust `DISPLAY_ROTATION` in `src/main.cpp` to match your cable routing:
 
 ```cpp
-#define DISPLAY_ROTATION 2   // 0=USB下（ポートが下）, 2=USB上（ポートが上）
+#define DISPLAY_ROTATION 2   // 0 = USB port down, 2 = USB port up
 ```
 
-変更後は再度 `pio run -t upload` で書き込みます。
+Re-flash after changing: `pio run -t upload`
 
-### デーモン（PC側）
+### Daemon (PC side)
 
-**事前準備：** [Claude Code](https://claude.ai/code) をインストールし、`claude login` でログインしておいてください。
+**Prerequisite:** Install [Claude Code](https://claude.ai/code) and run `claude login` before starting the daemon.
 
-インストールスクリプトを使う方法（推奨）：
+Using the install script (recommended):
 
 ```
-# Windows: install.bat をダブルクリック、またはターミナルで実行
+# Windows — double-click or run in terminal
 daemon\install.bat
 
 # macOS / Linux
@@ -81,68 +82,82 @@ chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
 
-手動でビルドする場合：
+Manual build:
 
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon        # Linux / macOS（常駐させる場合はバックグラウンドで起動）
-clawdial-daemon.exe      # Windows
+./clawdial-daemon       # Linux / macOS
+clawdial-daemon.exe     # Windows
 ```
 
-デーモンは **起動したままにしておく必要があります**。
-`install.bat` / `install.sh` のスタートアップ登録オプションを使うと PC 起動時に自動起動します。
+The daemon must **stay running** while you use Claude Code.
+Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
 
-> **認証の有効期限について**  
-> Claude Code の認証トークンは数時間で失効します。デーモンが 401 エラーを出した場合は
-> `claude login` を再実行してください。
+> **Token expiry**
+> Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
 
----
+**Configuration (optional)**
 
-## 操作方法
+Copy `daemon/.env.example` to `daemon/.env` and edit:
 
-| 操作 | 動作 |
-|------|------|
-| ダイヤル回転 | 編集中のリミット値を ±1% |
-| タッチ（通常時） | 編集対象をセッション / 週間で切り替え |
-| タッチ（警告中） | 警告音をミュート |
-
----
-
-## 警告動作
-
-| 使用率 | 動作 |
-|--------|------|
-| リミット −5% | ピピッ（初回のみ） |
-| リミット到達 | 画面赤フラッシュ + ピーピー繰り返し |
-| タッチ | 警告音をミュート（使用率がリミット以下に戻るまで） |
+```env
+CLAWDIAL_DEVICE_NAME=Clawdial    # BLE device name (must match firmware)
+CLAWDIAL_POLL_INTERVAL=60        # Polling interval in seconds
+CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
+```
 
 ---
 
-## BLE プロトコル
+## Usage
 
-Clawdmeter と共通の UUID を使用しています。
+| Action | Behavior |
+|--------|----------|
+| Rotate dial | Adjust active limit ±1% |
+| Touch (normal) | Switch edit target: Session ↔ Week |
+| Touch (during alert) | Mute alert |
 
-| 項目 | UUID |
+---
+
+## Alert Behavior
+
+| Usage | Action |
+|-------|--------|
+| Limit − 5% | Double beep (once) |
+| Limit reached | Red screen flash + continuous beeping |
+| Touch | Mute until usage drops below limit |
+
+---
+
+## BLE Protocol
+
+Shares the same UUID as Clawdmeter.
+
+| Item | UUID |
 |------|------|
 | Service | `4c41555a-4465-7669-6365-000000000001` |
 | RX Characteristic (write) | `4c41555a-4465-7669-6365-000000000002` |
 
-JSON ペイロード（daemon → device）:
+JSON payload (daemon → device):
 
 ```json
 { "s": 45, "sr": 120, "w": 28, "wr": 7200, "ok": true }
 ```
 
+| Field | Meaning |
+|-------|---------|
+| `s` | Session usage (%) |
+| `sr` | Minutes until session reset |
+| `w` | Weekly usage (%) |
+| `wr` | Minutes until weekly reset |
+| `ok` | Fetch success flag |
+
 ---
 
-## ライセンスについて
+## License
 
-このリポジトリにはライセンスを設定していません（All Rights Reserved）。
+No license is set on this repository (All Rights Reserved).
 
-核心となる実装（BLE UUID・APIポーリング方式・レートリミットヘッダーの読み取り）は
-[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) のコードを参考にしています。
-Clawdmeter 自体がライセンスを設定しておらず、利用許諾が明示されていないため、
-本リポジトリもライセンスを設定せず**個人利用・参考閲覧を想定した公開**にとどめています。
+The core implementation (BLE UUIDs, API polling approach, rate-limit header reading) is derived from [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter), which itself has no license. Because the upstream project carries no explicit permission to use or redistribute its code, this repository follows the same stance and is published for **personal use and reference only**.
 
-コードの再利用・再配布はご遠慮ください。
+Please do not reuse or redistribute the code.
