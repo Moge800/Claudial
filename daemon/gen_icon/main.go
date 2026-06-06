@@ -37,10 +37,10 @@ func main() {
 	must(png.Encode(&pngBuf, img))
 	pngData := pngBuf.Bytes()
 
-	// daemon/gen_icon/ から実行した場合は ../icon.ico = daemon/icon.ico
-	// daemon/ から go run ./gen_icon で実行した場合は icon.ico = daemon/icon.ico
-	// どちらでも daemon/icon.ico に書き込まれるよう、カレントディレクトリに出力する
-	// Write to icon.ico in cwd — run as "go run ./gen_icon" from daemon/ to get daemon/icon.ico.
+	// カレントディレクトリに icon.ico を書き込む。
+	// daemon/ から "go run ./gen_icon" で実行すること（コメント冒頭参照）。
+	// Write icon.ico to the current working directory.
+	// Run as "go run ./gen_icon" from the daemon/ directory (see file header).
 	f, err := os.Create("icon.ico")
 	must(err)
 	defer f.Close()

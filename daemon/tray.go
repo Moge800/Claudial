@@ -102,11 +102,11 @@ const defaultEnvContent = `# Clawdial daemon configuration
 # CLAWDIAL_DEVICE_NAME: BLE name of your M5Dial (set in firmware via long-press)
 CLAWDIAL_DEVICE_NAME=Clawdial
 
-# CLAWDIAL_POLL_INTERVAL: how often to query Anthropic API (e.g. 60s, 2m)
-CLAWDIAL_POLL_INTERVAL=60s
+# CLAWDIAL_POLL_INTERVAL: how often to query Anthropic API, in whole seconds
+CLAWDIAL_POLL_INTERVAL=60
 
-# CLAWDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt (e.g. 30s)
-CLAWDIAL_SCAN_TIMEOUT=30s
+# CLAWDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt, in whole seconds
+CLAWDIAL_SCAN_TIMEOUT=15
 `
 
 // openOrCreateConfig は.envが存在しなければデフォルト内容で作成してから開く。
