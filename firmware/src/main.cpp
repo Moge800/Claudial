@@ -22,9 +22,10 @@ static int last_enc = 0;
 static unsigned long last_lvgl_tick;  // setup() 末尾で millis() 初期化（初回 delta=0）
 static unsigned long last_alarm_ms  = 0;
 static unsigned long last_ble_ms    = 0;
-static bool alert_flash = false;
-static int  offline_count = 0;     // ok:false が続いた回数
-static bool is_offline    = false;
+static bool          alert_flash      = false;
+static bool          is_offline       = false;
+static unsigned long last_ok_ms       = 0;     // 最後に ok:true を受けた時刻
+static const unsigned long OFFLINE_TIMEOUT_MS = 3UL * 60 * 1000; // 3分更新なし → オフライン
 
 static int session_limit;
 static int week_limit;
@@ -103,18 +104,19 @@ void loop() {
         if (d.ok) {
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
-            offline_count = 0;
+            last_ok_ms  = now;
             if (is_offline) {
                 is_offline = false;
                 ui_set_offline(false);
             }
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
-        } else {
-            offline_count++;
-            if (!is_offline && offline_count >= 1) {
-                is_offline = true;
-                ui_set_offline(true);
-            }
+        }
+
+        // ok:false が来た場合 or タイムアウト → オフライン表示
+        bool timed_out = (last_ok_ms > 0) && (now - last_ok_ms >= OFFLINE_TIMEOUT_MS);
+        if (!is_offline && (!d.ok || timed_out)) {
+            is_offline = true;
+            ui_set_offline(true);
         }
     }
 
