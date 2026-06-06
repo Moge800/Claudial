@@ -29,6 +29,12 @@ const (
 	maxRetryWait = 5 * time.Minute
 )
 
+// retryExpired は fetchUsage が 401 を返すときの専用センチネル値。
+// retryExpired is the sentinel returned by fetchUsage on HTTP 401.
+// 負の Retry-After 日時と区別するため time.Duration の最小値を使う。
+// Using MinInt64 distinguishes it from a legitimate negative Retry-After date.
+const retryExpired = time.Duration(-1 << 63)
+
 var apiBody = []byte(`{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`)
 
 // ---- config ----
@@ -173,7 +179,11 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 			if secs, err := strconv.ParseFloat(ra, 64); err == nil {
 				wait = time.Duration(secs) * time.Second
 			} else if t, err := http.ParseTime(ra); err == nil {
-				wait = time.Until(t)
+				// 過去日時は負値になるので0にclamp（401センチネルと混同しないため）
+				// Clamp past dates to 0 to avoid confusion with the 401 sentinel.
+				if d := time.Until(t); d > 0 {
+					wait = d
+				}
 			}
 		}
 		if wait > maxRetryWait {
@@ -184,7 +194,7 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	}
 	if resp.StatusCode == 401 {
 		log.Printf("API HTTP 401: token expired — run 'claude login' to refresh, then daemon will retry automatically")
-		return nil, -1 // -1 = 再接続ループへ戻るシグナル / signal to return to the reconnect loop
+		return nil, retryExpired // 専用センチネルで401を通知 / dedicated sentinel for 401
 	}
 	if resp.StatusCode >= 400 {
 		log.Printf("API HTTP %d", resp.StatusCode)
@@ -215,10 +225,18 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 		return int(math.Round(mins))
 	}
 
+	sUtil := hdr("anthropic-ratelimit-unified-5h-utilization")
+	wUtil := hdr("anthropic-ratelimit-unified-7d-utilization")
+	// 主要ヘッダーが欠落している場合は取得失敗としてキャッシュへフォールバック
+	// Treat missing key headers as a fetch failure so the cache is used instead.
+	if sUtil == "" && wUtil == "" {
+		log.Printf("Rate-limit headers missing in 2xx response — falling back to cache")
+		return nil, 0
+	}
 	return &payload{
-		S:  pct(hdr("anthropic-ratelimit-unified-5h-utilization")),
+		S:  pct(sUtil),
 		SR: resetMin(hdr("anthropic-ratelimit-unified-5h-reset")),
-		W:  pct(hdr("anthropic-ratelimit-unified-7d-utilization")),
+		W:  pct(wUtil),
 		WR: resetMin(hdr("anthropic-ratelimit-unified-7d-reset")),
 		Ok: true,
 	}, 0
@@ -282,6 +300,10 @@ func run(cfg config) error {
 
 		token, err := loadToken()
 		if err != nil {
+			// RX characteristicがまだ未取得のため ok:false は送れない。
+			// Cannot send ok:false here — RX characteristic not yet discovered.
+			// デバイスはBLEタイムアウト後にオフライン画面を表示する。
+			// Device will show offline screen after BLE timeout.
 			log.Printf("Token load error: %v. Retrying in 5s...", err)
 			dev.Disconnect()
 			time.Sleep(5 * time.Second)
@@ -293,6 +315,14 @@ func run(cfg config) error {
 		dev.Disconnect()
 		log.Println("Disconnected. Reconnecting...")
 	}
+}
+
+// sendError は ok:false をデバイスに送信してオフライン画面を表示させる。
+// sendError sends ok:false to the device to trigger the offline screen.
+func sendError(rx bluetooth.DeviceCharacteristic) {
+	data, _ := json.Marshal(&payload{Ok: false})
+	_, _ = rx.WriteWithoutResponse(data)
+	log.Printf("Sent error: %s", data)
 }
 
 func mustUUID(s string) bluetooth.UUID {
@@ -351,9 +381,10 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 	for {
 		p, retryAfter := fetchUsage(token, cfg)
 
-		// retryAfter == -1 は 401 シグナル → セッション終了してトークン再読み込み
-		// retryAfter == -1 is the 401 signal → end session and reload the token.
-		if retryAfter < 0 {
+		// retryExpired は 401 シグナル → ok:false を送ってセッション終了
+		// retryExpired is the 401 signal → send ok:false then end session.
+		if retryAfter == retryExpired {
+			sendError(rx)
 			return fmt.Errorf("token expired: reconnect to reload credentials")
 		}
 
@@ -371,18 +402,21 @@ func runSession(dev *bluetooth.Device, token string, cfg config, cached **payloa
 			send = &payload{Ok: false}
 		}
 
-		send.PI = int(cfg.pollInterval.Seconds())
-		data, _ := json.Marshal(send)
-		if _, err := rx.WriteWithoutResponse(data); err != nil {
-			return fmt.Errorf("BLE write: %w", err)
-		}
-		log.Printf("Sent: %s", data)
-
+		// 実際の待機時間を先に確定してからPIに反映（rate limit中でもデバイスのタイムアウトがずれない）
+		// Compute actual wait first so PI reflects the real sleep interval,
+		// preventing the device from showing offline during long Retry-After backoffs.
 		wait := cfg.pollInterval
 		if retryAfter > 0 {
 			wait = retryAfter
 			log.Printf("Waiting %.0fs before retry...", wait.Seconds())
 		}
+
+		send.PI = int(wait.Seconds())
+		data, _ := json.Marshal(send)
+		if _, err := rx.WriteWithoutResponse(data); err != nil {
+			return fmt.Errorf("BLE write: %w", err)
+		}
+		log.Printf("Sent: %s", data)
 		time.Sleep(wait)
 	}
 }

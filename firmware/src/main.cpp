@@ -43,8 +43,10 @@ static warn_state_t warn_state = WARN_NONE;
 static bool muted = false;
 
 void IRAM_ATTR enc_isr() {
-    bool a = digitalRead(ENC_A_PIN);
-    bool b = digitalRead(ENC_B_PIN);
+    // digitalRead はフラッシュキャッシュ無効時にISRセーフでないため gpio_get_level を使用
+    // Use gpio_get_level instead of digitalRead — ISR-safe when flash cache is disabled.
+    bool a = gpio_get_level((gpio_num_t)ENC_A_PIN);
+    bool b = gpio_get_level((gpio_num_t)ENC_B_PIN);
     enc_count += (a == b) ? 1 : -1;
 }
 
@@ -82,8 +84,10 @@ void setup() {
     pinMode(ENC_BTN_PIN, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(ENC_A_PIN), enc_isr, CHANGE);
 
-    session_limit = storage_get_session_limit();
-    week_limit    = storage_get_week_limit();
+    // NVS値を[1,100]にクランプ（破損や旧スキーマによる0値でWARN_LIMITに入り込むのを防ぐ）
+    // Clamp NVS values to [1,100] to guard against corruption or schema changes yielding 0.
+    session_limit = constrain((int)storage_get_session_limit(), 1, 100);
+    week_limit    = constrain((int)storage_get_week_limit(),    1, 100);
 
     ui_init(M5.Display.width(), M5.Display.height());
     ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
