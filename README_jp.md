@@ -91,6 +91,9 @@ go build -o clawdial-daemon .
 clawdial-daemon.exe      # Windows
 ```
 
+> **トークン消費について**
+> デーモンはポーリングのたびに claude-haiku へ 1 トークンのAPIコールを行い、レスポンスのレートリミットヘッダーから使用率を取得します。デフォルトの 60 秒間隔では約 $0.03/日 の消費で、通常の Claude Code 利用と比べると誤差の範囲です。
+
 デーモンは **起動したままにしておく必要があります**。
 `install.bat` / `install.sh` のスタートアップ登録オプションを使うと PC 起動時に自動起動します。
 

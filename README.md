@@ -91,6 +91,9 @@ go build -o clawdial-daemon .
 clawdial-daemon.exe     # Windows
 ```
 
+> **Token usage**
+> The daemon fetches usage by making a minimal 1-token API call (claude-haiku) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.
+
 The daemon must **stay running** while you use Claude Code.
 Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
 
