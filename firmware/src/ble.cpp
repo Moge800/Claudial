@@ -50,6 +50,9 @@ static class RxCB : public NimBLECharacteristicCallbacks {
 
 void ble_init(const char *device_name) {
     NimBLEDevice::init(device_name);
+    // デフォルトMTU=23では20byteしか送れないため拡張を要求
+    // 実際のMTUは接続時に双方でネゴシエートされる
+    NimBLEDevice::setMTU(512);
 
     NimBLEServer *server = NimBLEDevice::createServer();
     server->setCallbacks(&serverCB);
