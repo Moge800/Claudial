@@ -41,14 +41,16 @@ void IRAM_ATTR enc_isr() {
     enc_count += (a == b) ? 1 : -1;
 }
 
+// tone(pin, freq, duration) は duration 後に自動停止するため delay 不要（非ブロッキング）
 void beep(int freq, int ms) {
     tone(BUZZER_PIN, freq, ms);
-    delay(ms);
-    noTone(BUZZER_PIN);
 }
 
 void beep_near() {
-    beep(1200, 80); delay(60); beep(1200, 80);
+    // ピピッ: 1回目鳴らして少し待ち、2回目（delay は短くブロックを最小化）
+    tone(BUZZER_PIN, 1200, 80);
+    delay(140);  // 80ms音 + 60ms間隔
+    tone(BUZZER_PIN, 1200, 80);
 }
 
 static warn_state_t calc_warn(int pct, int limit) {

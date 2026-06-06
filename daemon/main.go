@@ -137,7 +137,11 @@ func clamp(v, lo, hi int) int {
 }
 
 func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration) {
-	req, _ := http.NewRequest("POST", apiURL, bytes.NewReader(apiBody))
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(apiBody))
+	if err != nil {
+		log.Printf("request build error: %v", err)
+		return nil, 0
+	}
 	req.Header.Set("anthropic-version", "2023-06-01")
 	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
 	req.Header.Set("Content-Type", "application/json")
@@ -166,8 +170,8 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 		return nil, wait
 	}
 	if resp.StatusCode == 401 {
-		log.Printf("API HTTP 401: token expired or invalid — run 'claude login' to refresh")
-		return nil, 0
+		log.Printf("API HTTP 401: token expired — run 'claude login' to refresh, then daemon will retry automatically")
+		return nil, -1 // -1 = 再接続ループへ戻るシグナル
 	}
 	if resp.StatusCode >= 400 {
 		log.Printf("API HTTP %d", resp.StatusCode)
@@ -243,11 +247,6 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 }
 
 func run(cfg config) error {
-	token, err := loadToken()
-	if err != nil {
-		return err
-	}
-
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
@@ -267,6 +266,13 @@ func run(cfg config) error {
 		}
 		log.Println("Connected!")
 
+		token, err := loadToken()
+		if err != nil {
+			log.Printf("Token load error: %v. Retrying in 5s...", err)
+			dev.Disconnect()
+			time.Sleep(5 * time.Second)
+			continue
+		}
 		if err := runSession(&dev, token, cfg); err != nil {
 			log.Printf("Session error: %v", err)
 		}
@@ -302,6 +308,11 @@ func runSession(dev *bluetooth.Device, token string, cfg config) error {
 	var cached *payload
 	for {
 		p, retryAfter := fetchUsage(token, cfg)
+
+		// retryAfter == -1 は 401 シグナル → セッション終了してトークン再読み込み
+		if retryAfter < 0 {
+			return fmt.Errorf("token expired: reconnect to reload credentials")
+		}
 
 		var send *payload
 		switch {
