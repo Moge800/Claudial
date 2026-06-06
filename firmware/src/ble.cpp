@@ -11,7 +11,7 @@
 
 // connected / latest_data 両方を同じ mutex で保護
 static portMUX_TYPE data_mux   = portMUX_INITIALIZER_UNLOCKED;
-static BleData      latest_data = {0, 0, 0, 0, false};
+static BleData      latest_data = {0, 0, 0, 0, 0, false, 0};
 static bool         connected   = false;
 
 // ヒープ確保なし・static インスタンスを使用
@@ -40,6 +40,7 @@ static class RxCB : public NimBLECharacteristicCallbacks {
         d.week_pct      = doc["w"]  | 0;
         d.session_reset = doc["sr"] | 0;
         d.week_reset    = doc["wr"] | 0;
+        d.poll_interval = doc["pi"] | 0;
         d.ok            = doc["ok"] | false;
         d.received_ms   = millis();
 

@@ -125,6 +125,7 @@ type payload struct {
 	SR int  `json:"sr"`
 	W  int  `json:"w"`
 	WR int  `json:"wr"`
+	PI int  `json:"pi"` // ポーリング間隔（秒）— M5側のタイムアウト算出用
 	Ok bool `json:"ok"`
 }
 
@@ -255,6 +256,7 @@ func run(cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
+	var cached *payload  // セッションをまたいで最後の正常値を保持
 	for {
 		result, err := findDevice(cfg)
 		if err != nil {
@@ -278,7 +280,7 @@ func run(cfg config) error {
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		if err := runSession(&dev, token, cfg); err != nil {
+		if err := runSession(&dev, token, cfg, &cached); err != nil {
 			log.Printf("Session error: %v", err)
 		}
 		dev.Disconnect()
@@ -294,15 +296,25 @@ func mustUUID(s string) bluetooth.UUID {
 	return u
 }
 
-func runSession(dev *bluetooth.Device, token string, cfg config) error {
-	svc, err := dev.DiscoverServices([]bluetooth.UUID{
-		mustUUID("4c41555a-4465-7669-6365-000000000001"),
-	})
-	if err != nil {
-		return fmt.Errorf("discover service: %w", err)
-	}
-	if len(svc) == 0 {
-		return fmt.Errorf("discover service: no matching service found")
+func runSession(dev *bluetooth.Device, token string, cfg config, cached **payload) error {
+	// WinRT では Connect 直後に discover が失敗することがある → 最大3回リトライ
+	var svc []bluetooth.DeviceService
+	for attempt := 1; attempt <= 3; attempt++ {
+		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		var discErr error
+		svc, discErr = dev.DiscoverServices([]bluetooth.UUID{
+			mustUUID("4c41555a-4465-7669-6365-000000000001"),
+		})
+		if discErr == nil && len(svc) > 0 {
+			break
+		}
+		log.Printf("DiscoverServices attempt %d failed: %v", attempt, discErr)
+		if attempt == 3 {
+			if discErr != nil {
+				return fmt.Errorf("discover service: %w", discErr)
+			}
+			return fmt.Errorf("discover service: no matching service found")
+		}
 	}
 
 	chars, err := svc[0].DiscoverCharacteristics([]bluetooth.UUID{
@@ -316,7 +328,16 @@ func runSession(dev *bluetooth.Device, token string, cfg config) error {
 	}
 	rx := chars[0]
 
-	var cached *payload
+	// 接続直後、前セッションの cached があればすぐ送って No data を解消
+	if *cached != nil {
+		(*cached).PI = int(cfg.pollInterval.Seconds())
+		if data, err := json.Marshal(*cached); err == nil {
+			if _, err := rx.WriteWithoutResponse(data); err == nil {
+				log.Printf("Sent cached on connect: %s", data)
+			}
+		}
+	}
+
 	for {
 		p, retryAfter := fetchUsage(token, cfg)
 
@@ -328,15 +349,16 @@ func runSession(dev *bluetooth.Device, token string, cfg config) error {
 		var send *payload
 		switch {
 		case p != nil:
-			cached = p
+			*cached = p  // セッションをまたいで保持
 			send = p
-		case cached != nil:
-			send = cached
+		case *cached != nil:
+			send = *cached
 			log.Printf("Using cached: %+v", *send)
 		default:
 			send = &payload{Ok: false}
 		}
 
+		send.PI = int(cfg.pollInterval.Seconds())
 		data, _ := json.Marshal(send)
 		if _, err := rx.WriteWithoutResponse(data); err != nil {
 			return fmt.Errorf("BLE write: %w", err)

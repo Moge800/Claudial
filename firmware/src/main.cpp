@@ -24,8 +24,9 @@ static unsigned long last_alarm_ms  = 0;
 static unsigned long last_ble_ms    = 0;
 static bool          alert_flash      = false;
 static bool          is_offline       = false;
-// BLE受信が 3ポーリング分（500ms×3=1.5s）途絶えたらオフライン
-static const unsigned long BLE_TIMEOUT_MS = 1500UL;
+// daemonから受け取るポーリング間隔(pi)で算出: pi×2+30秒。
+// pi未受信（pi=0 / 旧daemon）はこのデフォルトを使用
+static const unsigned long BLE_TIMEOUT_DEFAULT_MS = 150000UL;
 
 static int session_limit;
 static int week_limit;
@@ -63,6 +64,7 @@ static warn_state_t calc_warn(int pct, int limit) {
 }
 
 void setup() {
+    Serial.begin(115200);
     storage_init();
 
     auto cfg = M5.config();
@@ -102,18 +104,23 @@ void loop() {
         last_ble_ms = now;
         BleData d = ble_get_data();
 
-        // BLE受信タイムアウト判定（daemonが落ちた場合）
-        bool ble_timeout = (d.received_ms > 0) &&
-                           (now - d.received_ms >= BLE_TIMEOUT_MS);
+        // 1回でも受信したか（boot直後はfalse → オフライン判定をスキップ）
+        bool has_data = (d.received_ms > 0);
+        // daemonのポーリング間隔から動的にタイムアウト算出（pi×2+30秒）
+        unsigned long timeout_ms = (d.poll_interval > 0)
+            ? (unsigned long)d.poll_interval * 2000UL + 30000UL
+            : BLE_TIMEOUT_DEFAULT_MS;
+        bool ble_timeout = has_data && (now - d.received_ms >= timeout_ms);
+        bool daemon_err  = has_data && !d.ok;
 
-        if (!d.ok || ble_timeout) {
+        if (daemon_err || ble_timeout) {
             // daemon が ok:false を送った → 即オフライン
             // BLE受信が途絶えた → タイムアウトでオフライン
             if (!is_offline) {
                 is_offline = true;
                 ui_set_offline(true);
             }
-        } else {
+        } else if (has_data && d.ok) {
             // ok:true かつ BLE受信あり → 正常
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
@@ -123,6 +130,7 @@ void loop() {
             }
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
         }
+        // has_data==false のときは何もしない（初回接続待ち）
     }
 
     // エンコーダでリミット調整（ISR競合防止のため割り込み停止してスナップショット）

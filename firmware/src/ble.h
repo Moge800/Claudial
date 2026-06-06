@@ -10,6 +10,7 @@ struct BleData {
     int           week_pct;      // w
     int           session_reset; // sr (分)
     int           week_reset;    // wr (分)
+    int           poll_interval; // pi (秒) daemonのポーリング間隔
     bool          ok;
     unsigned long received_ms;   // onWrite が呼ばれた millis()
 };

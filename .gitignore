@@ -92,3 +92,8 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+.docs/
+
+# Claude Code local settings (keep CLAUDE.md shared)
+.claude/settings.local.json
