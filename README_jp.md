@@ -177,6 +177,7 @@ Clawdial 固有の UUID を使用しています（RFC 4122 v4、ベース `2959
 |------|------|
 | Service | `29590732-a70c-4ea9-a739-000000000001` |
 | RX Characteristic (write) | `29590732-a70c-4ea9-a739-000000000002` |
+| TX Characteristic (notify) | `29590732-a70c-4ea9-a739-000000000003` |
 
 JSON ペイロード（daemon → device）:
 

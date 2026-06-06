@@ -177,6 +177,7 @@ Uses Clawdial-specific UUIDs (RFC 4122 v4, base `29590732-a70c-4ea9-a739-…`).
 |------|------|
 | Service | `29590732-a70c-4ea9-a739-000000000001` |
 | RX Characteristic (write) | `29590732-a70c-4ea9-a739-000000000002` |
+| TX Characteristic (notify) | `29590732-a70c-4ea9-a739-000000000003` |
 
 JSON payload (daemon → device):
 
