@@ -111,6 +111,8 @@ clawdial-daemon.exe     # Windows
 The daemon must **stay running** while you use Claude Code.
 Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
 
+> **Windows:** The daemon runs without a console window (built with `-H=windowsgui`). It appears only as a system tray icon. The installer (`install.bat`) itself opens a temporary console window, which closes when installation is complete.
+
 > **Token expiry**
 > Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
 
