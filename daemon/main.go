@@ -216,7 +216,9 @@ func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retr
 		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
 			return 0, false
 		}
-		return clamp(int(math.Round(f*100)), 0, 100), true
+		// float空間でクランプしてからintへ変換 — 極端な値でのオーバーフローを防ぐ。
+		// Clamp in float space before converting to int to avoid overflow on extreme values.
+		return int(math.Round(math.Max(0, math.Min(1, f)) * 100)), true
 	}
 
 	resetMin := func(ts string) int {

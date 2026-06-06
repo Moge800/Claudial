@@ -208,4 +208,4 @@ JSON payload (daemon → device):
 
 MIT — see [LICENSE](LICENSE).
 
-Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The rate-limit header polling approach is derived from that project.
+Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The rate-limit header polling approach is inspired by that project.
