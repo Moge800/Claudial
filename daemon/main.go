@@ -311,6 +311,9 @@ func run(ctx context.Context, cfg config) error {
 
 		result, err := findDevice(ctx, cfg)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil // キャンセルによる終了は正常 / clean exit on cancel
+			}
 			log.Printf("Scan error: %v. Retrying in 5s...", err)
 			select {
 			case <-time.After(5 * time.Second):
@@ -322,6 +325,9 @@ func run(ctx context.Context, cfg config) error {
 
 		dev, err := adapter.Connect(result.Address, bluetooth.ConnectionParams{})
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			log.Printf("Connect error: %v. Retrying in 5s...", err)
 			select {
 			case <-time.After(5 * time.Second):
@@ -334,6 +340,10 @@ func run(ctx context.Context, cfg config) error {
 
 		token, err := loadToken()
 		if err != nil {
+			if ctx.Err() != nil {
+				dev.Disconnect()
+				return nil
+			}
 			// RX characteristicがまだ未取得のため ok:false は送れない。
 			// Cannot send ok:false here — RX characteristic not yet discovered.
 			// デバイスはBLEタイムアウト後にオフライン画面を表示する。
@@ -348,6 +358,10 @@ func run(ctx context.Context, cfg config) error {
 			continue
 		}
 		if err := runSession(ctx, &dev, token, cfg, &cached); err != nil {
+			if ctx.Err() != nil {
+				dev.Disconnect()
+				return nil // キャンセルによるセッション終了は正常 / clean exit on cancel
+			}
 			log.Printf("Session error: %v", err)
 		}
 		dev.Disconnect()
@@ -478,11 +492,13 @@ func main() {
 // setupLogFile はexeと同じフォルダにdaemon.logを作成しlogの出力先に追加する。
 // setupLogFile creates daemon.log next to the executable and tees log output to it.
 func setupLogFile() {
-	exe, err := os.Executable()
-	if err != nil {
-		return
+	// os.Executable()失敗時はカレントディレクトリの daemon.log にフォールバック。
+	// tray.logPath() と同じフォールバックパスを使うことで Open Log が常に有効になる。
+	// Fall back to "daemon.log" in cwd on failure, matching tray.logPath()'s fallback.
+	logPath := "daemon.log"
+	if exe, err := os.Executable(); err == nil {
+		logPath = filepath.Join(filepath.Dir(exe), "daemon.log")
 	}
-	logPath := filepath.Join(filepath.Dir(exe), "daemon.log")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		log.Printf("Cannot open log file %s: %v", logPath, err)
