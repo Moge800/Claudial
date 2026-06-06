@@ -33,7 +33,7 @@ func onReady(cfg config) {
 	systray.SetTitle("Clawdial")
 
 	mLog := systray.AddMenuItem("Open Log", "Open daemon.log in default editor")
-	mConfig := systray.AddMenuItem("Open Config", "Open .env in default editor")
+	mConfig := systray.AddMenuItem("Open Config", "Open .env in default editor (restart to apply changes)")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Stop Clawdial daemon")
 

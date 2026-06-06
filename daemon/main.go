@@ -150,8 +150,8 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration) {
-	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(apiBody))
+func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retryAfter time.Duration) {
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(apiBody))
 	if err != nil {
 		log.Printf("request build error: %v", err)
 		return nil, 0
@@ -165,6 +165,11 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		// コンテキストキャンセル（Quit）は正常終了 — エラーログを出さない。
+		// Context cancellation (Quit) is a clean exit — don't log as an error.
+		if ctx.Err() != nil {
+			return nil, 0
+		}
 		log.Printf("API error: %v", err)
 		return nil, 0
 	}
@@ -336,6 +341,10 @@ func run(ctx context.Context, cfg config) error {
 			continue
 		}
 
+		// tinygo bluetooth の Connect/DiscoverServices はコンテキスト非対応のため、
+		// Quit 時はこれらの完了を待つ必要がある（通常数秒以内）。
+		// Connect/DiscoverServices do not support context cancellation in tinygo bluetooth;
+		// Quit will wait for them to complete (normally within a few seconds).
 		dev, err := adapter.Connect(result.Address, bluetooth.ConnectionParams{})
 		if err != nil {
 			if ctx.Err() != nil {
@@ -448,7 +457,7 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 	}
 
 	for {
-		p, retryAfter := fetchUsage(token, cfg)
+		p, retryAfter := fetchUsage(ctx, token, cfg)
 
 		// retryExpired は 401 シグナル → ok:false を送ってセッション終了
 		// retryExpired is the 401 signal → send ok:false then end session.

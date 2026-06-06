@@ -9,9 +9,10 @@ A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 
 Just place it on your desk and turn the dial. Session and weekly usage are displayed in real time, with audio alerts as you approach your limit.
 
-![Clawdial on desk](assets/device.jpg)
-
-![Alert demo (red flash + beep)](assets/alert_demo.gif)
+<table role="presentation"><tr>
+<td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
+<td><img src="assets/alert_demo.gif" width="180" alt="Alert demo (red flash + beep)"></td>
+</tr></table>
 
 ---
 
@@ -122,6 +123,8 @@ CLAWDIAL_DEVICE_NAME=Clawdial    # BLE device name (must match firmware)
 CLAWDIAL_POLL_INTERVAL=60        # Polling interval in seconds
 CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 ```
+
+> **Config changes take effect on restart.** On Windows, use Quit → relaunch (or the systray **Open Config** tooltip is a reminder of this).
 
 ---
 
