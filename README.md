@@ -3,7 +3,7 @@
 **[日本語版 README はこちら](README_jp.md)**
 
 > Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin).
-> BLE UUID / payload format and the rate-limit header approach are derived from that project.
+> The rate-limit header polling approach is inspired by that project. BLE UUIDs and all code are original.
 
 A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 

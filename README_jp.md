@@ -3,7 +3,7 @@
 **[English README is here](README.md)**
 
 > インスパイア元: [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin)。
-> BLE UUID・ペイロード形式・レートリミットヘッダーの読み取り方式は同プロジェクトを参考にしています。
+> レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。BLE UUID およびコードはすべて独自実装です。
 
 M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
