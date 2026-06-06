@@ -3,11 +3,11 @@
 **[English README is here](README.md)**
 
 > インスパイア元: [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin)。
-> BLE UUID・ペイロード形式・レートリミットヘッダーの読み取り方式は同プロジェクトを参考にしています。
+> レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。
 
 M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
-デスクに置いてダイヤルを回すだけ。セッション・週間の使用率をリアルタイム表示し、リミットに近づくと警告音で知らせます。
+デスクに置くだけ。セッション・週間の API 使用率をリアルタイム表示し、閾値に近づくとダブルビープ、到達すると継続的な警告音で知らせます。ダイヤルを回して閾値をその場で調整できます。
 
 <table role="presentation"><tr>
 <td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
@@ -20,7 +20,7 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 3Dプリント台座を使うと、USBポートを下にした状態でダイヤルを自立させられます。
 
-> 🖨️ 台座データ: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand)
+> 🖨️ 台座データ: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand) by [DaNi 3D Lab](https://makerworld.com/en/@DaNi3DLab) — ありがとうございます！
 
 台座を使う場合は、タッチ長押しで向きをトグルできます（デフォルトは「USB下」）。
 
@@ -91,7 +91,7 @@ Clawdial/
 # Windows: install.bat をダブルクリック、またはターミナルで実行
 daemon\install.bat
 
-# macOS / Linux
+# macOS / Linux（未テスト・近日対応予定）
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
@@ -101,15 +101,25 @@ chmod +x daemon/install.sh
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon        # Linux / macOS
+./clawdial-daemon        # Linux / macOS（未テスト）
 clawdial-daemon.exe      # Windows
 ```
+
+> **macOS / Linux:** ビルド・起動は可能ですが、動作未検証です。近日中にテスト予定です。
 
 > **トークン消費について**
 > デーモンはポーリングのたびに `claude-haiku-4-5-20251001` へ 1 トークンのAPIコールを行い、レスポンスのレートリミットヘッダーから使用率を取得します。デフォルトの 60 秒間隔では約 $0.03/日 の消費で、通常の Claude Code 利用と比べると誤差の範囲です。
 
 デーモンは **起動したままにしておく必要があります**。
 `install.bat` / `install.sh` のスタートアップ登録オプションを使うと PC 起動時に自動起動します。
+
+> **Windows:** デーモンはコンソールウィンドウなしで動作します（`-H=windowsgui` ビルド）。タスクトレイのアイコンとしてのみ表示されます。インストーラ（`install.bat`）は一時的にコンソールウィンドウを開きますが、インストール完了後に閉じます。
+
+**アンインストール（Windows）**
+
+1. トレイアイコンを右クリック → **Quit**
+2. インストールフォルダの `clawdial-daemon.exe` と `daemon.log` を削除
+3. スタートアップショートカットを削除：エクスプローラーで `shell:startup` を開き `Clawdial.lnk` を削除
 
 > **認証の有効期限について**
 > Claude Code の認証トークンは数時間で失効します。デーモンが 401 エラーを出した場合は `claude login` を再実行してください。
@@ -204,4 +214,4 @@ JSON ペイロード（daemon → device）:
 
 MIT — [LICENSE](LICENSE) 参照。
 
-[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしていますが、BLE UUID およびコードはすべて独自実装です。
+[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。

@@ -3,11 +3,11 @@
 **[日本語版 README はこちら](README_jp.md)**
 
 > Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin).
-> BLE UUID / payload format and the rate-limit header approach are derived from that project.
+> The rate-limit header polling approach is inspired by that project.
 
 A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 
-Just place it on your desk and turn the dial. Session and weekly usage are displayed in real time, with audio alerts as you approach your limit.
+Just place it on your desk. Session and weekly API usage are displayed in real time — a double beep warns you as you approach your limit, and a continuous alert fires when you reach it. Rotate the dial to adjust the threshold on the fly.
 
 <table role="presentation"><tr>
 <td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
@@ -20,7 +20,7 @@ Just place it on your desk and turn the dial. Session and weekly usage are displ
 
 A 3D-printed stand keeps the dial upright with the USB port at the bottom.
 
-> 🖨️ Stand design: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand)
+> 🖨️ Stand design: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand) by [DaNi 3D Lab](https://makerworld.com/en/@DaNi3DLab) — thanks!
 
 With the stand, long-press the touch to toggle orientation — the default is "USB at bottom".
 
@@ -91,7 +91,7 @@ Using the install script (recommended):
 # Windows — double-click or run in terminal
 daemon\install.bat
 
-# macOS / Linux
+# macOS / Linux (untested — testing planned)
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
@@ -101,15 +101,25 @@ Manual build:
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon       # Linux / macOS
+./clawdial-daemon       # Linux / macOS (untested)
 clawdial-daemon.exe     # Windows
 ```
+
+> **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.
 
 > **Token usage**
 > The daemon fetches usage by making a minimal 1-token API call (`claude-haiku-4-5-20251001`) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.
 
 The daemon must **stay running** while you use Claude Code.
 Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
+
+> **Windows:** The daemon runs without a console window (built with `-H=windowsgui`). It appears only as a system tray icon. The installer (`install.bat`) itself opens a temporary console window, which closes when installation is complete.
+
+**Uninstall (Windows)**
+
+1. Right-click the tray icon → **Quit**
+2. Delete `clawdial-daemon.exe` and `daemon.log` from the install folder
+3. Delete the startup shortcut: open `shell:startup` in Explorer and remove `Clawdial.lnk`
 
 > **Token expiry**
 > Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
@@ -204,4 +214,4 @@ JSON payload (daemon → device):
 
 MIT — see [LICENSE](LICENSE).
 
-Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The rate-limit header polling approach is derived from that project; BLE UUIDs and all code are original.
+Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The rate-limit header polling approach is inspired by that project.

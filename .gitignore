@@ -95,5 +95,6 @@ Testing/
 
 .docs/
 
-# Claude Code local settings (keep CLAUDE.md shared)
-.claude/settings.local.json
+# Claude Code / agent files (not shared)
+.claude/
+AGENTS.md

@@ -211,12 +211,14 @@ func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retr
 
 	hdr := func(name string) string { return resp.Header.Get(name) }
 
-	pct := func(util string) int {
+	pct := func(util string) (int, bool) {
 		f, err := strconv.ParseFloat(strings.TrimSpace(util), 64)
 		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-			return 0
+			return 0, false
 		}
-		return clamp(int(math.Round(f*100)), 0, 100)
+		// float空間でクランプしてからintへ変換 — 極端な値でのオーバーフローを防ぐ。
+		// Clamp in float space before converting to int to avoid overflow on extreme values.
+		return int(math.Round(math.Max(0, math.Min(1, f)) * 100)), true
 	}
 
 	resetMin := func(ts string) int {
@@ -233,18 +235,22 @@ func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retr
 
 	sUtil := hdr("anthropic-ratelimit-unified-5h-utilization")
 	wUtil := hdr("anthropic-ratelimit-unified-7d-utilization")
-	// 主要ヘッダーが欠落している場合は取得失敗としてキャッシュへフォールバック
-	// Treat missing key headers as a fetch failure so the cache is used instead.
-	// 片方でも欠落していたらキャッシュへフォールバック（&&だと片方欠落を正常扱いしてしまう）
-	// Fail if either header is missing — && would silently treat a partial response as valid.
+	// 主要ヘッダーが欠落または不正値の場合はキャッシュへフォールバック
+	// Treat missing or unparseable key headers as a fetch failure.
 	if sUtil == "" || wUtil == "" {
 		log.Printf("Rate-limit headers missing in 2xx response — falling back to cache")
 		return nil, 0
 	}
+	sPct, sOk := pct(sUtil)
+	wPct, wOk := pct(wUtil)
+	if !sOk || !wOk {
+		log.Printf("Rate-limit headers unparseable (s=%q w=%q) — falling back to cache", sUtil, wUtil)
+		return nil, 0
+	}
 	return &payload{
-		S:  pct(sUtil),
+		S:  sPct,
 		SR: resetMin(hdr("anthropic-ratelimit-unified-5h-reset")),
-		W:  pct(wUtil),
+		W:  wPct,
 		WR: resetMin(hdr("anthropic-ratelimit-unified-7d-reset")),
 		Ok: true,
 	}, 0
@@ -298,12 +304,8 @@ func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	case <-ctx.Done():
 		adapter.StopScan()
-		select {
-		case r := <-found:
-			log.Printf("Found (at cancel boundary): %s", r.Address)
-			return r, nil
-		default:
-		}
+		// キャンセル時はfoundを捨てる — 拾うとConnect（キャンセル不能）へ進んでしまう。
+		// On cancel, discard any queued result — returning it would enter Connect, which ignores ctx.
 		return bluetooth.ScanResult{}, ctx.Err()
 	}
 }
@@ -458,6 +460,12 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 
 	for {
 		p, retryAfter := fetchUsage(ctx, token, cfg)
+
+		// コンテキストキャンセルはfetchUsageがnil,0を返す — BLE書き込みへ進まず即リターン。
+		// If ctx was cancelled, fetchUsage returns nil,0 — exit before any BLE write.
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 
 		// retryExpired は 401 シグナル → ok:false を送ってセッション終了
 		// retryExpired is the 401 signal → send ok:false then end session.
