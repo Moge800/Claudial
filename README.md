@@ -62,12 +62,21 @@ Clawdial/
 
 ### Firmware
 
-Connect M5Stack Dial to your PC via USB-C (**USB is only needed for flashing**).
+**1. Install VS Code and PlatformIO**
 
-```bash
-cd firmware
-pio run -t upload
-```
+1. Install [Visual Studio Code](https://code.visualstudio.com/)
+2. Open the Extensions panel (`Ctrl+Shift+X`), search for **PlatformIO IDE**, and install it
+3. Restart VS Code when prompted
+
+**2. Flash the firmware**
+
+1. Connect M5Stack Dial to your PC with a USB-C cable
+2. Open this repository folder in VS Code (`File → Open Folder`)
+3. Click the **PlatformIO icon** in the left sidebar (the alien head icon)
+4. Under `m5stack-dial → General`, click **Upload**
+5. Wait for `SUCCESS` in the terminal — this takes about a minute on first run (downloading toolchain)
+
+> **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
 
 After flashing, you can unplug the USB cable. Normal use is USB-C power (charger, etc.) + BLE.
 

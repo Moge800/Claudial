@@ -62,12 +62,21 @@ Clawdial/
 
 ### ファームウェア
 
-M5Stack Dial を PC に USB-C で接続し、以下を実行します（**書き込み時のみ USB 接続が必要**です）。
+**1. VS Code と PlatformIO をインストール**
 
-```bash
-cd firmware
-pio run -t upload
-```
+1. [Visual Studio Code](https://code.visualstudio.com/) をインストール
+2. 拡張機能パネル（`Ctrl+Shift+X`）で **PlatformIO IDE** を検索してインストール
+3. 促されたら VS Code を再起動
+
+**2. ファームウェアを書き込む**
+
+1. M5Stack Dial を USB-C ケーブルで PC に接続
+2. VS Code でこのリポジトリのフォルダを開く（`ファイル → フォルダを開く`）
+3. 左サイドバーの **PlatformIO アイコン**（エイリアンのアイコン）をクリック
+4. `m5stack-dial → General` の **Upload** をクリック
+5. ターミナルに `SUCCESS` が出たら完了（初回は toolchain のダウンロードで1分ほどかかります）
+
+> **ポートが見つからない場合**： Windows では [CP210x USB ドライバ](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) が必要なことがあります。インストール後、ケーブルを差し直してください。
 
 書き込み完了後は USB を抜いてかまいません。通常使用は USB-C 給電（充電器など）＋ BLE 通信です。
 
