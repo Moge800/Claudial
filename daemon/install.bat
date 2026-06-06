@@ -44,8 +44,12 @@ if /i "!STARTUP!"=="y" (
         "$s.Description='Clawdial daemon';" ^
         "$s.Save()"
 
-    echo [OK] Shortcut registered to startup.
-    echo      !SHORTCUT!
+    if errorlevel 1 (
+        echo [WARN] Shortcut creation failed. Add manually to startup if needed.
+    ) else (
+        echo [OK] Shortcut registered to startup.
+        echo      !SHORTCUT!
+    )
 ) else (
     echo [SKIP] Startup registration skipped.
 )

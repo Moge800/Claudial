@@ -7,7 +7,7 @@
 
 A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 
-Just place it on your desk. Session and weekly API usage are displayed in real time — a short beep warns you as you approach your limit, and a continuous alert fires when you reach it. Rotate the dial to adjust the threshold on the fly.
+Just place it on your desk. Session and weekly API usage are displayed in real time — a double beep warns you as you approach your limit, and a continuous alert fires when you reach it. Rotate the dial to adjust the threshold on the fly.
 
 <table role="presentation"><tr>
 <td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
