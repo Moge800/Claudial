@@ -230,7 +230,9 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	wUtil := hdr("anthropic-ratelimit-unified-7d-utilization")
 	// 主要ヘッダーが欠落している場合は取得失敗としてキャッシュへフォールバック
 	// Treat missing key headers as a fetch failure so the cache is used instead.
-	if sUtil == "" && wUtil == "" {
+	// 片方でも欠落していたらキャッシュへフォールバック（&&だと片方欠落を正常扱いしてしまう）
+	// Fail if either header is missing — && would silently treat a partial response as valid.
+	if sUtil == "" || wUtil == "" {
 		log.Printf("Rate-limit headers missing in 2xx response — falling back to cache")
 		return nil, 0
 	}
@@ -251,29 +253,39 @@ func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 	log.Printf("Scanning for '%s'...", cfg.deviceName)
 
 	found := make(chan bluetooth.ScanResult, 1)
-	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
-		if r.LocalName() == cfg.deviceName {
-			a.StopScan()
-			// non-blocking: 複数回検出されても最初の1件だけ確定 / keep only the first hit even if detected multiple times
-			select {
-			case found <- r:
-			default:
-			}
-		}
-	})
-	if err != nil {
-		return bluetooth.ScanResult{}, err
-	}
+	scanErr := make(chan error, 1)
 
+	// adapter.Scan() はブロッキング呼び出しのため goroutine で実行する。
+	// adapter.Scan() blocks until StopScan() is called, so run it in a goroutine.
+	go func() {
+		err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
+			if r.LocalName() == cfg.deviceName {
+				a.StopScan()
+				// non-blocking: 複数回検出されても最初の1件だけ確定 / keep only the first hit
+				select {
+				case found <- r:
+				default:
+				}
+			}
+		})
+		if err != nil {
+			scanErr <- err
+		}
+	}()
+
+	// タイムアウト・キャンセル側から StopScan() を呼ぶことで goroutine を解放する。
+	// Call StopScan() from the timeout/cancel arm to unblock the scan goroutine.
 	select {
 	case r := <-found:
 		log.Printf("Found: %s", r.Address)
 		return r, nil
+	case err := <-scanErr:
+		return bluetooth.ScanResult{}, err
 	case <-time.After(cfg.scanTimeout):
-		adapter.StopScan() // タイムアウト時も必ずスキャンを停止 / always stop scanning on timeout too
+		adapter.StopScan()
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	case <-ctx.Done():
-		adapter.StopScan() // キャンセル時もスキャンを停止 / stop scan on context cancel
+		adapter.StopScan()
 		return bluetooth.ScanResult{}, ctx.Err()
 	}
 }
