@@ -441,7 +441,7 @@ func setupLogFile() {
 		log.Printf("Cannot open log file %s: %v", logPath, err)
 		return
 	}
-	// 標準出力とファイルの両方に出力 / Write to both stdout and log file.
-	log.SetOutput(io.MultiWriter(os.Stdout, f))
+	// ファイルを先にしてstdout失敗時もファイル書き込みを保証 / File first: ensures log is written even if stdout is invalid (windowsgui).
+	log.SetOutput(io.MultiWriter(f, os.Stdout))
 	log.Printf("Logging to %s", logPath)
 }

@@ -49,13 +49,9 @@ func onReady(cfg config) {
 		case <-mLog.ClickedCh:
 			openFile(logPath())
 		case <-mConfig.ClickedCh:
-			// .envが存在しない場合はログに記録するだけ / Log if .env is absent.
-			p := configPath()
-			if _, err := os.Stat(p); err != nil {
-				log.Printf("Config file not found: %s", p)
-			} else {
-				openFile(p)
-			}
+			// .envがなければデフォルト内容で作成してから開く（GUIなのでログだけでは気づけない）
+			// Create .env with defaults if absent — log-only is invisible with windowsgui.
+			openOrCreateConfig()
 		case <-mQuit.ClickedCh:
 			// systray.Quit()を呼んでRunが正常にアンワインドするのを待つ
 			// Call systray.Quit() and return so systray.Run() unwinds normally.
@@ -91,4 +87,28 @@ func openFile(path string) {
 	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", path).Start(); err != nil {
 		log.Printf("Failed to open %s: %v", path, err)
 	}
+}
+
+// defaultEnvContent は.envが存在しない場合に書き込むデフォルト内容。
+// defaultEnvContent is written to .env when the file does not exist.
+const defaultEnvContent = `# Clawdial daemon configuration
+# BLE_DEVICE_NAME: name of your M5Dial (set in firmware via long-press)
+BLE_DEVICE_NAME=Clawdial
+
+# POLL_INTERVAL_SECONDS: how often to query Anthropic API (seconds, default 60)
+POLL_INTERVAL_SECONDS=60
+`
+
+// openOrCreateConfig は.envが存在しなければデフォルト内容で作成してから開く。
+// openOrCreateConfig creates .env with defaults if absent, then opens it.
+func openOrCreateConfig() {
+	p := configPath()
+	if _, err := os.Stat(p); os.IsNotExist(err) {
+		if werr := os.WriteFile(p, []byte(defaultEnvContent), 0600); werr != nil {
+			log.Printf("Failed to create config: %v", werr)
+			return
+		}
+		log.Printf("Created default config: %s", p)
+	}
+	openFile(p)
 }
