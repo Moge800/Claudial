@@ -37,7 +37,7 @@ Clawdial/
 | 項目 | 要件 |
 |------|------|
 | [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み |
-| [Go 1.21+](https://go.dev/dl/) | デーモンのビルド |
+| [Go 1.26+](https://go.dev/dl/) | デーモンのビルド |
 | [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
 | Bluetooth LE 5.0 対応アダプタ | PC 側 BLE 通信 |
 
@@ -138,10 +138,11 @@ JSON ペイロード（daemon → device）:
 
 ## ライセンスについて
 
-このリポジトリにはライセンスを設定していません。
+このリポジトリにはライセンスを設定していません（All Rights Reserved）。
 
 核心となる実装（BLE UUID・APIポーリング方式・レートリミットヘッダーの読み取り）は
 [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) のコードを参考にしています。
-Clawdmeter 自体がライセンスを設定していないため、本リポジトリも同様の立場をとっています。
+Clawdmeter 自体がライセンスを設定しておらず、利用許諾が明示されていないため、
+本リポジトリもライセンスを設定せず**個人利用・参考閲覧を想定した公開**にとどめています。
 
-コードを参考にする場合はこの点をご理解ください。
+コードの再利用・再配布はご遠慮ください。

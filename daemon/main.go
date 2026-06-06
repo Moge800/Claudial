@@ -69,11 +69,19 @@ func loadConfig() config {
 // ---- credentials ----
 
 func loadToken() (string, error) {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine home directory: %w", err)
+	}
 	candidates := []string{
 		filepath.Join(home, ".claude", ".credentials.json"),
-		filepath.Join(os.Getenv("LOCALAPPDATA"), "Claude", ".credentials.json"),
-		filepath.Join(os.Getenv("APPDATA"), "Claude", ".credentials.json"),
+	}
+	// Windows 固有のフォールバックパス（環境変数が未設定の環境では追加しない）
+	if v := os.Getenv("LOCALAPPDATA"); v != "" {
+		candidates = append(candidates, filepath.Join(v, "Claude", ".credentials.json"))
+	}
+	if v := os.Getenv("APPDATA"); v != "" {
+		candidates = append(candidates, filepath.Join(v, "Claude", ".credentials.json"))
 	}
 	for _, p := range candidates {
 		raw, err := os.ReadFile(p)
