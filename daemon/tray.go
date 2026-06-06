@@ -129,9 +129,12 @@ func openOrCreateConfig() {
 		// ErrExist: ファイルが既存 → そのまま開く / File already exists — open it as-is.
 	} else {
 		_, werr := f.WriteString(defaultEnvContent)
-		f.Close()
-		if werr != nil {
-			log.Printf("Failed to write config: %v", werr)
+		cerr := f.Close()
+		if werr != nil || cerr != nil {
+			// 書き込み/クローズ失敗時は壊れたファイルを残さず削除する。
+			// Remove the file on write/close failure to avoid leaving a broken config.
+			os.Remove(p)
+			log.Printf("Failed to write config (write=%v close=%v); removed partial file", werr, cerr)
 			return
 		}
 		log.Printf("Created default config: %s", p)

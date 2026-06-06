@@ -508,16 +508,16 @@ func setupLogFile() {
 	// os.Executable()失敗時はカレントディレクトリの daemon.log にフォールバック。
 	// tray.logPath() と同じフォールバックパスを使うことで Open Log が常に有効になる。
 	// Fall back to "daemon.log" in cwd on failure, matching tray.logPath()'s fallback.
-	logPath := "daemon.log"
+	logFile := "daemon.log"
 	if exe, err := os.Executable(); err == nil {
-		logPath = filepath.Join(filepath.Dir(exe), "daemon.log")
+		logFile = filepath.Join(filepath.Dir(exe), "daemon.log")
 	}
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
-		log.Printf("Cannot open log file %s: %v", logPath, err)
+		log.Printf("Cannot open log file %s: %v", logFile, err)
 		return
 	}
 	// ファイルを先にしてstdout失敗時もファイル書き込みを保証 / File first: ensures log is written even if stdout is invalid (windowsgui).
 	log.SetOutput(io.MultiWriter(f, os.Stdout))
-	log.Printf("Logging to %s", logPath)
+	log.Printf("Logging to %s", logFile)
 }
