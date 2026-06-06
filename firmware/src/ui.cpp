@@ -8,6 +8,7 @@ static lv_obj_t *arc_limit_week;     // 外円マーカー（週間用）
 static lv_obj_t *label_session;
 static lv_obj_t *label_week;
 static lv_obj_t *label_limit;
+static lv_obj_t *label_offline;      // オフライン時メッセージ
 
 static lv_display_t *disp;
 static lv_color_t    draw_buf_data[240 * 20];
@@ -80,11 +81,46 @@ void ui_init(int w, int h) {
     lv_obj_set_style_text_color(label_limit, lv_color_hex(0xFF4400), 0);
     lv_label_set_text(label_limit, "! S:80%");
     lv_obj_align(label_limit, LV_ALIGN_CENTER, 0, 45);
+
+    // オフライン時メッセージ（通常は非表示）
+    label_offline = lv_label_create(scr);
+    lv_obj_set_style_text_font(label_offline, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(label_offline, lv_color_white(), 0);
+    lv_label_set_text(label_offline, "Session expired\nrun: claude login");
+    lv_obj_set_style_text_align(label_offline, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(label_offline, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_flag(label_offline, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ui_set_alert(bool active) {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, active ? lv_color_hex(0xFF0000) : lv_color_black(), 0);
+}
+
+void ui_set_offline(bool offline) {
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_set_style_bg_color(scr, offline ? lv_color_hex(0x333333) : lv_color_black(), 0);
+
+    // ゲージ・ラベルの表示/非表示を切り替え
+    if (offline) {
+        lv_obj_add_flag(arc_session,       LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(arc_week,          LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(arc_limit_session, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(arc_limit_week,    LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(label_session,     LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(label_week,        LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(label_limit,       LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(label_offline,  LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_remove_flag(arc_session,    LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(arc_week,       LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(arc_limit_session, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(arc_limit_week, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(label_session,  LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(label_week,     LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(label_limit,    LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(label_offline,     LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void ui_update(int session_pct, int week_pct, int session_limit, int week_limit, edit_target_t target) {

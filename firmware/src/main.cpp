@@ -23,6 +23,8 @@ static unsigned long last_lvgl_tick;  // setup() 末尾で millis() 初期化（
 static unsigned long last_alarm_ms  = 0;
 static unsigned long last_ble_ms    = 0;
 static bool alert_flash = false;
+static int  offline_count = 0;     // ok:false が続いた回数
+static bool is_offline    = false;
 
 static int session_limit;
 static int week_limit;
@@ -101,7 +103,18 @@ void loop() {
         if (d.ok) {
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
+            offline_count = 0;
+            if (is_offline) {
+                is_offline = false;
+                ui_set_offline(false);
+            }
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
+        } else {
+            offline_count++;
+            if (!is_offline && offline_count >= 3) {
+                is_offline = true;
+                ui_set_offline(true);
+            }
         }
     }
 
