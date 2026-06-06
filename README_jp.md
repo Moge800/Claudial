@@ -71,16 +71,6 @@ pio run -t upload
 
 書き込み完了後は USB を抜いてかまいません。通常使用は USB-C 給電（充電器など）＋ BLE 通信です。
 
-**画面向きの調整**
-
-ケーブルの取り回しに合わせて `src/main.cpp` の `DISPLAY_ROTATION` を変更してください。
-
-```cpp
-#define DISPLAY_ROTATION 2   // 0=USB下（ポートが下）, 2=USB上（ポートが上）
-```
-
-変更後は再度 `pio run -t upload` で書き込みます。
-
 ### デーモン（PC側）
 
 **事前準備：** [Claude Code](https://claude.ai/code) をインストールし、`claude login` でログインしておいてください。

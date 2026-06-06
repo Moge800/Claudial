@@ -187,7 +187,9 @@ void loop() {
             delay(350);
             ESP.restart();
         }
-        if (t.wasPressed()) {
+    } else {
+        // 指を離したとき、長押しでなければ短押し処理 / On release, handle short-press only if long-press didn't fire
+        if (touch_start_ms > 0 && !long_press_fired) {
             if (warn_state == WARN_LIMIT && !muted) {
                 muted = true;
                 ui_set_alert(false);
@@ -198,7 +200,6 @@ void loop() {
                 beep(1500, 40);
             }
         }
-    } else {
         touch_start_ms = 0;
     }
 

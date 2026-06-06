@@ -71,16 +71,6 @@ pio run -t upload
 
 After flashing, you can unplug the USB cable. Normal use is USB-C power (charger, etc.) + BLE.
 
-**Display orientation**
-
-Adjust `DISPLAY_ROTATION` in `src/main.cpp` to match your cable routing:
-
-```cpp
-#define DISPLAY_ROTATION 2   // 0 = USB port down, 2 = USB port up
-```
-
-Re-flash after changing: `pio run -t upload`
-
 ### Daemon (PC side)
 
 **Prerequisite:** Install [Claude Code](https://claude.ai/code) and run `claude login` before starting the daemon.
