@@ -122,6 +122,12 @@ JSON ペイロード（daemon → device）:
 
 ---
 
-## ライセンス
+## ライセンスについて
 
-MIT — 詳細は [LICENSE](LICENSE) を参照。
+このリポジトリにはライセンスを設定していません。
+
+核心となる実装（BLE UUID・APIポーリング方式・レートリミットヘッダーの読み取り）は
+[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) のコードを参考にしています。
+Clawdmeter 自体がライセンスを設定していないため、本リポジトリも同様の立場をとっています。
+
+コードを参考にする場合はこの点をご理解ください。
