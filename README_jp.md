@@ -115,6 +115,12 @@ clawdial-daemon.exe      # Windows
 
 > **Windows:** デーモンはコンソールウィンドウなしで動作します（`-H=windowsgui` ビルド）。タスクトレイのアイコンとしてのみ表示されます。インストーラ（`install.bat`）は一時的にコンソールウィンドウを開きますが、インストール完了後に閉じます。
 
+**アンインストール（Windows）**
+
+1. トレイアイコンを右クリック → **Quit**
+2. インストールフォルダの `clawdial-daemon.exe` と `daemon.log` を削除
+3. スタートアップショートカットを削除：エクスプローラーで `shell:startup` を開き `Clawdial.lnk` を削除
+
 > **認証の有効期限について**
 > Claude Code の認証トークンは数時間で失効します。デーモンが 401 エラーを出した場合は `claude login` を再実行してください。
 

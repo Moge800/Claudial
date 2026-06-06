@@ -115,6 +115,12 @@ Use the startup registration option in `install.bat` / `install.sh` to launch it
 
 > **Windows:** The daemon runs without a console window (built with `-H=windowsgui`). It appears only as a system tray icon. The installer (`install.bat`) itself opens a temporary console window, which closes when installation is complete.
 
+**Uninstall (Windows)**
+
+1. Right-click the tray icon → **Quit**
+2. Delete `clawdial-daemon.exe` and `daemon.log` from the install folder
+3. Delete the startup shortcut: open `shell:startup` in Explorer and remove `Clawdial.lnk`
+
 > **Token expiry**
 > Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
 
