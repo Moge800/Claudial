@@ -26,7 +26,7 @@ import (
 
 const (
 	apiURL       = "https://api.anthropic.com/v1/messages"
-	rxUUID       = "4c41555a-4465-7669-6365-000000000002"
+	rxUUID       = "436c6177-6469-616c-0000-000000000002"
 	maxRetryWait = 5 * time.Minute
 )
 
@@ -371,7 +371,7 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 		}
 		var discErr error
 		svc, discErr = dev.DiscoverServices([]bluetooth.UUID{
-			mustUUID("4c41555a-4465-7669-6365-000000000001"),
+			mustUUID("436c6177-6469-616c-0000-000000000001"),
 		})
 		if discErr == nil && len(svc) > 0 {
 			break

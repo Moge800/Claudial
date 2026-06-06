@@ -175,8 +175,8 @@ Clawdmeter と共通の UUID を使用しています。
 
 | 項目 | UUID |
 |------|------|
-| Service | `4c41555a-4465-7669-6365-000000000001` |
-| RX Characteristic (write) | `4c41555a-4465-7669-6365-000000000002` |
+| Service | `436c6177-6469-616c-0000-000000000001` |
+| RX Characteristic (write) | `436c6177-6469-616c-0000-000000000002` |
 
 JSON ペイロード（daemon → device）:
 
