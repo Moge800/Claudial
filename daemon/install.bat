@@ -72,6 +72,15 @@ if exist "%CRED1%" (
 echo.
 
 echo ========================================
-echo  Done! Run: clawdial-daemon.exe
+echo  Done!
 echo ========================================
+echo.
+set /p LAUNCH="Launch Clawdial now? [Y/n]: "
+if /i not "!LAUNCH!"=="n" (
+    start "" "%~dp0clawdial-daemon.exe"
+    echo [OK] Clawdial started.
+) else (
+    echo [SKIP] Run clawdial-daemon.exe to start manually.
+)
+echo.
 pause
