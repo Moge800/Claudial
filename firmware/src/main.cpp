@@ -150,6 +150,10 @@ void loop() {
 
     // エンコーダでリミット調整（ISR競合防止のため割り込み停止してスナップショット）
     // Adjust limit via encoder (disable interrupts to snapshot, avoiding ISR race).
+    // NVS書き込みは1秒無操作後にデバウンスして実行（フラッシュ書き込み寿命を保護）
+    // NVS writes are debounced: save only after 1s of inactivity to protect flash endurance.
+    static unsigned long last_enc_change_ms = 0;
+    static bool          nvs_pending        = false;
     noInterrupts();
     int enc = enc_count;
     interrupts();
@@ -162,13 +166,20 @@ void loop() {
         int adj = -delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
-            storage_set_session_limit(session_limit);
         } else {
             week_limit = constrain(week_limit + adj, 0, 100);
-            storage_set_week_limit(week_limit);
         }
+        last_enc_change_ms = now;
+        nvs_pending = true;
         ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, last_stale);
         beep(adj > 0 ? 1200 : 800, 20);
+    }
+    // 1秒操作なしでNVSに保存（毎tick書き込みを避けフラッシュ寿命を保護）
+    // Save to NVS after 1s of no rotation to avoid per-tick flash writes.
+    if (nvs_pending && (now - last_enc_change_ms >= 1000)) {
+        nvs_pending = false;
+        storage_set_session_limit(session_limit);
+        storage_set_week_limit(week_limit);
     }
 
     // タッチ: 消音 or 編集対象切り替え、長押しで画面反転 / Touch: mute, switch edit target, long-press to flip screen
