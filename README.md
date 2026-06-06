@@ -47,28 +47,38 @@ Clawdial/
 
 ### ファームウェア
 
+M5Stack Dial を PC に USB-C で接続し、以下を実行します（**書き込み時のみ USB 接続が必要**です）。
+
 ```bash
 cd firmware
 pio run -t upload
 ```
 
-画面向きはケーブルの取り回しに合わせて `src/main.cpp` の `DISPLAY_ROTATION` で変更できます。
+書き込み完了後は USB を抜いてかまいません。通常使用は USB-C 給電（充電器など）＋ BLE 通信です。
+
+**画面向きの調整**
+
+ケーブルの取り回しに合わせて `src/main.cpp` の `DISPLAY_ROTATION` を変更してください。
 
 ```cpp
-#define DISPLAY_ROTATION 2   // 0=USB下, 2=USB上
+#define DISPLAY_ROTATION 2   // 0=USB下（ポートが下）, 2=USB上（ポートが上）
 ```
+
+変更後は再度 `pio run -t upload` で書き込みます。
 
 ### デーモン（PC側）
 
+**事前準備：** [Claude Code](https://claude.ai/code) をインストールし、`claude login` でログインしておいてください。
+
 インストールスクリプトを使う方法（推奨）：
 
-```bash
-# Windows
+```
+# Windows: install.bat をダブルクリック、またはターミナルで実行
 daemon\install.bat
 
 # macOS / Linux
 chmod +x daemon/install.sh
-daemon/install.sh
+./daemon/install.sh
 ```
 
 手動でビルドする場合：
@@ -76,12 +86,16 @@ daemon/install.sh
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon        # Linux / macOS
+./clawdial-daemon        # Linux / macOS（常駐させる場合はバックグラウンドで起動）
 clawdial-daemon.exe      # Windows
 ```
 
-Claude Code の認証情報（`~/.claude/.credentials.json`）を自動的に読み込みます。
-起動前に `claude login` でログイン済みであることを確認してください。
+デーモンは **起動したままにしておく必要があります**。
+`install.bat` / `install.sh` のスタートアップ登録オプションを使うと PC 起動時に自動起動します。
+
+> **認証の有効期限について**  
+> Claude Code の認証トークンは数時間で失効します。デーモンが 401 エラーを出した場合は
+> `claude login` を再実行してください。
 
 ---
 
