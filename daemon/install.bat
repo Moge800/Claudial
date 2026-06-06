@@ -39,7 +39,7 @@ if /i "!STARTUP!"=="y" (
     set SHORTCUT=!STARTUP_DIR!\clawdial-daemon.bat
 
     echo @echo off > "!SHORTCUT!"
-    echo start "" "%~dp0clawdial-daemon.exe" >> "!SHORTCUT!"
+    echo start "" /min "%~dp0clawdial-daemon.exe" >> "!SHORTCUT!"
 
     echo [OK] スタートアップに登録しました。
     echo      !SHORTCUT!

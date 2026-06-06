@@ -1,15 +1,24 @@
 // gen_icon generates a minimal 16x16 ICO file for the systray icon.
-// Run: go run ./gen_icon
+// Run from the daemon/ directory: go run ./gen_icon
+// Output: daemon/icon.ico
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
-	"bytes"
 	"os"
 )
+
+func must(err error) {
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
 
 func main() {
 	img := image.NewNRGBA(image.Rect(0, 0, 16, 16))
@@ -24,35 +33,36 @@ func main() {
 		}
 	}
 
-	// PNG encode
 	var pngBuf bytes.Buffer
-	if err := png.Encode(&pngBuf, img); err != nil {
-		panic(err)
-	}
+	must(png.Encode(&pngBuf, img))
 	pngData := pngBuf.Bytes()
 
-	// ICO format: ICONDIR + ICONDIRENTRY + PNG data
-	f, err := os.Create("../icon.ico")
-	if err != nil {
-		panic(err)
-	}
+	// daemon/gen_icon/ から実行した場合は ../icon.ico = daemon/icon.ico
+	// daemon/ から go run ./gen_icon で実行した場合は icon.ico = daemon/icon.ico
+	// どちらでも daemon/icon.ico に書き込まれるよう、カレントディレクトリに出力する
+	// Write to icon.ico in cwd — run as "go run ./gen_icon" from daemon/ to get daemon/icon.ico.
+	f, err := os.Create("icon.ico")
+	must(err)
 	defer f.Close()
 
 	pngSize := uint32(len(pngData))
 	dataOffset := uint32(6 + 16) // ICONDIR(6) + ICONDIRENTRY(16)
 
+	write := func(v any) { must(binary.Write(f, binary.LittleEndian, v)) }
+	writeB := func(b []byte) { _, err := f.Write(b); must(err) }
+
 	// ICONDIR
-	binary.Write(f, binary.LittleEndian, uint16(0))     // reserved
-	binary.Write(f, binary.LittleEndian, uint16(1))     // type: ICO
-	binary.Write(f, binary.LittleEndian, uint16(1))     // count
+	write(uint16(0)) // reserved
+	write(uint16(1)) // type: ICO
+	write(uint16(1)) // count
 
 	// ICONDIRENTRY
-	f.Write([]byte{16, 16, 0, 0})                       // width, height, colorCount, reserved
-	binary.Write(f, binary.LittleEndian, uint16(1))     // planes
-	binary.Write(f, binary.LittleEndian, uint16(32))    // bitCount
-	binary.Write(f, binary.LittleEndian, pngSize)       // size
-	binary.Write(f, binary.LittleEndian, dataOffset)    // offset
+	writeB([]byte{16, 16, 0, 0}) // width, height, colorCount, reserved
+	write(uint16(1))              // planes
+	write(uint16(32))             // bitCount
+	write(pngSize)                // size
+	write(dataOffset)             // offset
 
-	// PNG image data
-	f.Write(pngData)
+	writeB(pngData)
+	fmt.Println("icon.ico written")
 }

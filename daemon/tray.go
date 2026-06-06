@@ -49,10 +49,18 @@ func onReady(cfg config) {
 		case <-mLog.ClickedCh:
 			openFile(logPath())
 		case <-mConfig.ClickedCh:
-			openFile(configPath())
+			// .envが存在しない場合はログに記録するだけ / Log if .env is absent.
+			p := configPath()
+			if _, err := os.Stat(p); err != nil {
+				log.Printf("Config file not found: %s", p)
+			} else {
+				openFile(p)
+			}
 		case <-mQuit.ClickedCh:
+			// systray.Quit()を呼んでRunが正常にアンワインドするのを待つ
+			// Call systray.Quit() and return so systray.Run() unwinds normally.
 			systray.Quit()
-			os.Exit(0)
+			return
 		}
 	}
 }
@@ -67,18 +75,14 @@ func logPath() string {
 	return filepath.Join(filepath.Dir(exe), "daemon.log")
 }
 
-// configPath は.envのパスを返す（exe隣 → なければカレントディレクトリ）。
-// configPath returns the .env path (next to exe, fallback to cwd).
+// configPath は.envのパスを返す（exe隣を優先）。
+// configPath returns the .env path (next to exe preferred).
 func configPath() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return ".env"
 	}
-	p := filepath.Join(filepath.Dir(exe), ".env")
-	if _, err := os.Stat(p); err == nil {
-		return p
-	}
-	return ".env"
+	return filepath.Join(filepath.Dir(exe), ".env")
 }
 
 // openFile はOSのデフォルトアプリでファイルを開く。
