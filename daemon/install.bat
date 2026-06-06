@@ -34,12 +34,17 @@ echo [2/3] Startup registration
 set /p STARTUP="Launch automatically on Windows startup? [y/N]: "
 if /i "!STARTUP!"=="y" (
     set STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
-    set SHORTCUT=!STARTUP_DIR!\clawdial-daemon.bat
+    set SHORTCUT=!STARTUP_DIR!\Clawdial.lnk
+    set EXE=%~dp0clawdial-daemon.exe
 
-    echo @echo off > "!SHORTCUT!"
-    echo start "" /min "%~dp0clawdial-daemon.exe" >> "!SHORTCUT!"
+    powershell -NoProfile -Command ^
+        "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('!SHORTCUT!');" ^
+        "$s.TargetPath='!EXE!';" ^
+        "$s.WorkingDirectory='%~dp0';" ^
+        "$s.Description='Clawdial daemon';" ^
+        "$s.Save()"
 
-    echo [OK] Registered to startup.
+    echo [OK] Shortcut registered to startup.
     echo      !SHORTCUT!
 ) else (
     echo [SKIP] Startup registration skipped.
