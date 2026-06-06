@@ -16,6 +16,7 @@ __pycache__/
 
 # Go build artifacts
 daemon/*.exe
+daemon/*.exe~
 daemon/clawdial-daemon
 
 # OS
