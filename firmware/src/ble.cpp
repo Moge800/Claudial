@@ -41,6 +41,7 @@ static class RxCB : public NimBLECharacteristicCallbacks {
         d.session_reset = doc["sr"] | 0;
         d.week_reset    = doc["wr"] | 0;
         d.ok            = doc["ok"] | false;
+        d.received_ms   = millis();
 
         taskENTER_CRITICAL(&data_mux);
         latest_data = d;

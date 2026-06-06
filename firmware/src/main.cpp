@@ -24,8 +24,8 @@ static unsigned long last_alarm_ms  = 0;
 static unsigned long last_ble_ms    = 0;
 static bool          alert_flash      = false;
 static bool          is_offline       = false;
-static unsigned long last_ok_ms       = 0;     // 最後に ok:true を受けた時刻
-static const unsigned long OFFLINE_TIMEOUT_MS = 3UL * 60 * 1000; // 3分更新なし → オフライン
+// BLE受信が 3ポーリング分（500ms×3=1.5s）途絶えたらオフライン
+static const unsigned long BLE_TIMEOUT_MS = 1500UL;
 
 static int session_limit;
 static int week_limit;
@@ -101,22 +101,27 @@ void loop() {
     if (now - last_ble_ms >= 500) {
         last_ble_ms = now;
         BleData d = ble_get_data();
-        if (d.ok) {
+
+        // BLE受信タイムアウト判定（daemonが落ちた場合）
+        bool ble_timeout = (d.received_ms > 0) &&
+                           (now - d.received_ms >= BLE_TIMEOUT_MS);
+
+        if (!d.ok || ble_timeout) {
+            // daemon が ok:false を送った → 即オフライン
+            // BLE受信が途絶えた → タイムアウトでオフライン
+            if (!is_offline) {
+                is_offline = true;
+                ui_set_offline(true);
+            }
+        } else {
+            // ok:true かつ BLE受信あり → 正常
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
-            last_ok_ms  = now;
             if (is_offline) {
                 is_offline = false;
                 ui_set_offline(false);
             }
             ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
-        }
-
-        // ok:false が来た場合 or タイムアウト → オフライン表示
-        bool timed_out = (last_ok_ms > 0) && (now - last_ok_ms >= OFFLINE_TIMEOUT_MS);
-        if (!is_offline && (!d.ok || timed_out)) {
-            is_offline = true;
-            ui_set_offline(true);
         }
     }
 
