@@ -127,6 +127,18 @@ CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 
 ## Usage
 
+### Setting Warning Limits
+
+The rotary dial is the core interaction — it lets you set the usage threshold at which Clawdial warns you, directly on the device with no app or config file needed.
+
+1. **Short-press** the touch screen to select which limit to edit — **Session** or **Week** (the active one is highlighted on the display)
+2. **Rotate the dial** to raise or lower the threshold **±1% per click**
+3. The limit is **saved instantly** to the device's non-volatile storage — it persists across reboots and power cuts, no reflashing needed
+
+> **Example:** Set Session limit to 80% → Clawdial double-beeps when you hit 75%, then flashes red and beeps continuously at 80%.
+
+### Controls
+
 | Action | Behavior |
 |--------|----------|
 | Rotate dial | Adjust active limit ±1% |
