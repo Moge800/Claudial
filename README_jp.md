@@ -90,6 +90,10 @@ Clawdial/
 ```
 # Windows: install.bat をダブルクリック、またはターミナルで実行
 daemon\install.bat
+
+# macOS / Linux（未テスト・近日対応予定）
+chmod +x daemon/install.sh
+./daemon/install.sh
 ```
 
 手動でビルドする場合：

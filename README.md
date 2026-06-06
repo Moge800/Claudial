@@ -90,6 +90,10 @@ Using the install script (recommended):
 ```
 # Windows — double-click or run in terminal
 daemon\install.bat
+
+# macOS / Linux (untested — testing planned)
+chmod +x daemon/install.sh
+./daemon/install.sh
 ```
 
 Manual build:

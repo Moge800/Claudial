@@ -53,8 +53,14 @@ echo.
 
 :: Claude login check
 echo [3/3] Claude auth check
-set CRED=%USERPROFILE%\.claude\.credentials.json
-if exist "%CRED%" (
+set CRED1=%USERPROFILE%\.claude\.credentials.json
+set CRED2=%LOCALAPPDATA%\Claude\.credentials.json
+set CRED3=%APPDATA%\Claude\.credentials.json
+if exist "%CRED1%" (
+    echo [OK] Credentials found.
+) else if exist "%CRED2%" (
+    echo [OK] Credentials found.
+) else if exist "%CRED3%" (
     echo [OK] Credentials found.
 ) else (
     echo [WARN] Credentials not found. Run "claude login" first.
