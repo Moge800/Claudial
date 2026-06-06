@@ -95,5 +95,6 @@ Testing/
 
 .docs/
 
-# Claude Code (not shared)
+# Claude Code / agent files (not shared)
 .claude/
+AGENTS.md
