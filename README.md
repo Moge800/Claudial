@@ -187,8 +187,6 @@ JSON payload (daemon → device):
 
 ## License
 
-No license is set on this repository (All Rights Reserved).
+MIT — see [LICENSE](LICENSE).
 
-The core implementation (BLE UUIDs, API polling approach, rate-limit header reading) is derived from [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter), which itself has no license. Because the upstream project carries no explicit permission to use or redistribute its code, this repository follows the same stance and is published for **personal use and reference only**.
-
-Please do not reuse or redistribute the code.
+Inspired by [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter). The BLE UUIDs and rate-limit header polling approach are derived from that project; all code is original.

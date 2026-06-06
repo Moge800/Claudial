@@ -185,13 +185,8 @@ JSON ペイロード（daemon → device）:
 
 ---
 
-## ライセンスについて
+## ライセンス
 
-このリポジトリにはライセンスを設定していません（All Rights Reserved）。
+MIT — [LICENSE](LICENSE) 参照。
 
-核心となる実装（BLE UUID・APIポーリング方式・レートリミットヘッダーの読み取り）は
-[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) のコードを参考にしています。
-Clawdmeter 自体がライセンスを設定しておらず、利用許諾が明示されていないため、
-本リポジトリもライセンスを設定せず**個人利用・参考閲覧を想定した公開**にとどめています。
-
-コードの再利用・再配布はご遠慮ください。
+[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。BLE UUID とレートリミットヘッダーのポーリング方式は同プロジェクトを参考にしていますが、コードはすべて独自実装です。
