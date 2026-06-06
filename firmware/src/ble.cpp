@@ -30,13 +30,22 @@ static class ServerCB : public NimBLEServerCallbacks {
 } serverCB;
 
 static class RxCB : public NimBLECharacteristicCallbacks {
+    // 無効パケット受信時にok=false+received_msを更新するヘルパー
+    // Helper: mark a received-but-invalid packet so the offline logic can fire.
+    void markInvalid() {
+        taskENTER_CRITICAL(&data_mux);
+        latest_data.ok          = false;
+        latest_data.received_ms = millis();
+        taskEXIT_CRITICAL(&data_mux);
+    }
+
     void onWrite(NimBLECharacteristic *c) override {
         // getValue前にサイズチェック（コピー前に拒否してヒープ確保を回避）
         // Check length before getValue() to avoid the allocation/copy for oversized payloads.
-        if (c->getDataLength() > 256) return;
+        if (c->getDataLength() > 256) { markInvalid(); return; }
         std::string val = c->getValue();
         JsonDocument doc;
-        if (deserializeJson(doc, val) != DeserializationError::Ok) return;
+        if (deserializeJson(doc, val) != DeserializationError::Ok) { markInvalid(); return; }
 
         BleData d;
         d.session_pct   = doc["s"]  | 0;

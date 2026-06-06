@@ -152,8 +152,9 @@ void loop() {
     // Adjust limit via encoder (disable interrupts to snapshot, avoiding ISR race).
     // NVS書き込みは1秒無操作後にデバウンスして実行（フラッシュ書き込み寿命を保護）
     // NVS writes are debounced: save only after 1s of inactivity to protect flash endurance.
-    static unsigned long last_enc_change_ms = 0;
-    static bool          nvs_pending        = false;
+    static unsigned long last_enc_change_ms  = 0;
+    static bool          session_limit_dirty = false;
+    static bool          week_limit_dirty    = false;
     noInterrupts();
     int enc = enc_count;
     interrupts();
@@ -165,21 +166,23 @@ void loop() {
         // Always invert: encoder hardware produces negative delta for clockwise rotation.
         int adj = -delta;
         if (edit_target == EDIT_SESSION) {
-            session_limit = constrain(session_limit + adj, 0, 100);
+            // 最小値1: 0にするとpct>=0が常に真でWARN_LIMITが解除できなくなる
+            // Min 1: limit=0 would make pct>=limit always true, trapping in WARN_LIMIT.
+            session_limit = constrain(session_limit + adj, 1, 100);
+            session_limit_dirty = true;
         } else {
-            week_limit = constrain(week_limit + adj, 0, 100);
+            week_limit = constrain(week_limit + adj, 1, 100);
+            week_limit_dirty = true;
         }
         last_enc_change_ms = now;
-        nvs_pending = true;
         ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, last_stale);
         beep(adj > 0 ? 1200 : 800, 20);
     }
-    // 1秒操作なしでNVSに保存（毎tick書き込みを避けフラッシュ寿命を保護）
-    // Save to NVS after 1s of no rotation to avoid per-tick flash writes.
-    if (nvs_pending && (now - last_enc_change_ms >= 1000)) {
-        nvs_pending = false;
-        storage_set_session_limit(session_limit);
-        storage_set_week_limit(week_limit);
+    // 1秒操作なしでNVSに保存（変更したlimitのみ書き込み）
+    // Save to NVS after 1s of inactivity — write only the changed limit.
+    if ((session_limit_dirty || week_limit_dirty) && (now - last_enc_change_ms >= 1000)) {
+        if (session_limit_dirty) { storage_set_session_limit(session_limit); session_limit_dirty = false; }
+        if (week_limit_dirty)    { storage_set_week_limit(week_limit);    week_limit_dirty    = false; }
     }
 
     // タッチ: 消音 or 編集対象切り替え、長押しで画面反転 / Touch: mute, switch edit target, long-press to flip screen
@@ -197,11 +200,8 @@ void loop() {
             long_press_fired = true;
             // 未保存のリミット変更をflushしてから再起動（デバウンス中の設定を失わないため）
             // Flush any pending limit save before rebooting so debounced changes are not lost.
-            if (nvs_pending) {
-                nvs_pending = false;
-                storage_set_session_limit(session_limit);
-                storage_set_week_limit(week_limit);
-            }
+            if (session_limit_dirty) { storage_set_session_limit(session_limit); session_limit_dirty = false; }
+            if (week_limit_dirty)    { storage_set_week_limit(week_limit);    week_limit_dirty    = false; }
             // rotation トグル → NVS保存 → 再起動 / toggle rotation, save to NVS, reboot
             uint8_t new_rot = (display_rotation == 0) ? 2 : 0;
             storage_set_rotation(new_rot);
