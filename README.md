@@ -124,6 +124,8 @@ CLAWDIAL_POLL_INTERVAL=60        # Polling interval in seconds
 CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 ```
 
+> **Config changes take effect on restart.** On Windows, use Quit → relaunch (or the systray **Open Config** tooltip is a reminder of this).
+
 ---
 
 ## Usage

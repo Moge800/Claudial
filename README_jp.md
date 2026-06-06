@@ -124,6 +124,8 @@ CLAWDIAL_POLL_INTERVAL=60        # ポーリング間隔（秒）
 CLAWDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
 ```
 
+> **設定の変更はデーモン再起動後に反映されます。** Windows では Quit → 再起動してください（システムトレイの **Open Config** のツールチップにも記載されています）。
+
 ---
 
 ## 操作方法
