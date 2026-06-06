@@ -4,6 +4,12 @@
 #include "ble.h"
 #include "storage.h"
 
+// 画面向き: 0=USB下, 2=USB上（ケーブルが上から出るとき）
+// 変更後は pio run -t upload で書き込み直してください
+#ifndef DISPLAY_ROTATION
+#define DISPLAY_ROTATION 2
+#endif
+
 // M5Dial ピン定義
 static const int BUZZER_PIN  = 3;
 static const int ENC_A_PIN   = 40;
@@ -50,7 +56,7 @@ void setup() {
 
     auto cfg = M5.config();
     M5.begin(cfg);
-    M5.Display.setRotation(storage_get_rotation());
+    M5.Display.setRotation(DISPLAY_ROTATION);
 
     pinMode(ENC_A_PIN,   INPUT_PULLUP);
     pinMode(ENC_B_PIN,   INPUT_PULLUP);
@@ -101,7 +107,7 @@ void loop() {
         last_enc = enc;
 
         // 画面180°回転時はエンコーダ方向も反転
-        int adj = (storage_get_rotation() == 2) ? -delta : delta;
+        int adj = (DISPLAY_ROTATION == 2) ? -delta : delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
             storage_set_session_limit(session_limit);

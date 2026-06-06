@@ -209,7 +209,11 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
 		if r.LocalName() == cfg.deviceName {
 			a.StopScan()
-			found <- r
+			// non-blocking: 複数回検出されても最初の1件だけ確定
+			select {
+			case found <- r:
+			default:
+			}
 		}
 	})
 	if err != nil {
@@ -221,6 +225,7 @@ func findDevice(cfg config) (bluetooth.ScanResult, error) {
 		log.Printf("Found: %s", r.Address)
 		return r, nil
 	case <-time.After(cfg.scanTimeout):
+		adapter.StopScan() // タイムアウト時も必ずスキャンを停止
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	}
 }
