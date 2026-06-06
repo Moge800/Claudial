@@ -9,6 +9,10 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 デスクに置いてダイヤルを回すだけ。セッション・週間の使用率をリアルタイム表示し、リミットに近づくと警告音で知らせます。
 
+![Clawdial on desk](assets/device.jpg)
+
+> 📹 [警告デモ動画（赤フラッシュ＋ビープ）](assets/alert_demo.mov)
+
 ---
 
 ## ハードウェア
