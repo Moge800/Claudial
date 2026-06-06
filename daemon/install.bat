@@ -76,7 +76,7 @@ echo  Done!
 echo ========================================
 echo.
 set /p LAUNCH="Launch Clawdial now? [Y/n]: "
-if /i not "!LAUNCH!"=="n" (
+if /i not "!LAUNCH:~0,1!"=="n" (
     start "" "%~dp0clawdial-daemon.exe"
     echo [OK] Clawdial started.
 ) else (
