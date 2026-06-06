@@ -2,9 +2,7 @@
 #include <lvgl.h>
 #include "ui.h"
 #include "ble.h"
-
-// 画面向き: 0=USB下, 2=USB上（ケーブルが上から出るとき）
-#define DISPLAY_ROTATION 2
+#include "storage.h"
 
 // M5Dial ピン定義
 static const int BUZZER_PIN  = 3;
@@ -14,10 +12,10 @@ static const int ENC_BTN_PIN = 42;
 
 static volatile int enc_count = 0;
 
-static int session_limit = 80;
-static int week_limit    = 80;
-static int session_pct   = 0;
-static int week_pct      = 0;
+static int session_limit;
+static int week_limit;
+static int session_pct = 0;
+static int week_pct    = 0;
 static edit_target_t edit_target = EDIT_SESSION;
 
 // 警告状態
@@ -42,25 +40,31 @@ void beep_near() {
 }
 
 static warn_state_t calc_warn(int pct, int limit) {
-    if (pct >= limit)                      return WARN_LIMIT;
-    if (pct >= max(0, limit - 5))          return WARN_NEAR;
+    if (pct >= limit)             return WARN_LIMIT;
+    if (pct >= max(0, limit - 5)) return WARN_NEAR;
     return WARN_NONE;
 }
 
 void setup() {
+    storage_init();
+
     auto cfg = M5.config();
     M5.begin(cfg);
-    M5.Display.setRotation(DISPLAY_ROTATION);
+    M5.Display.setRotation(storage_get_rotation());
 
     pinMode(ENC_A_PIN,   INPUT_PULLUP);
     pinMode(ENC_B_PIN,   INPUT_PULLUP);
     pinMode(ENC_BTN_PIN, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(ENC_A_PIN), enc_isr, CHANGE);
 
+    session_limit = storage_get_session_limit();
+    week_limit    = storage_get_week_limit();
+
     ui_init(M5.Display.width(), M5.Display.height());
     ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
 
-    ble_init("Clawdial");
+    String devName = storage_get_device_name();
+    ble_init(devName.c_str());
 
     beep(1000, 80);
 }
@@ -95,11 +99,15 @@ void loop() {
     if (enc != last_enc) {
         int delta = enc - last_enc;
         last_enc = enc;
-        int adj = (DISPLAY_ROTATION == 2) ? -delta : delta;
+
+        // 画面180°回転時はエンコーダ方向も反転
+        int adj = (storage_get_rotation() == 2) ? -delta : delta;
         if (edit_target == EDIT_SESSION) {
             session_limit = constrain(session_limit + adj, 0, 100);
+            storage_set_session_limit(session_limit);
         } else {
             week_limit = constrain(week_limit + adj, 0, 100);
+            storage_set_week_limit(week_limit);
         }
         ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
         beep(adj > 0 ? 1200 : 800, 20);
@@ -127,7 +135,7 @@ void loop() {
 
     if (ws > warn_state) {
         muted = false;
-        if (ws == WARN_NEAR)  beep_near();
+        if (ws == WARN_NEAR) beep_near();
     }
     if (ws < warn_state) {
         muted = false;

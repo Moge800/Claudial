@@ -18,18 +18,53 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"tinygo.org/x/bluetooth"
 )
 
 const (
-	deviceName   = "Clawdial"
 	apiURL       = "https://api.anthropic.com/v1/messages"
 	rxUUID       = "4c41555a-4465-7669-6365-000000000002"
-	pollInterval = 60 * time.Second
 	maxRetryWait = 5 * time.Minute
 )
 
 var apiBody = []byte(`{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`)
+
+// ---- config ----
+
+type config struct {
+	deviceName   string
+	pollInterval time.Duration
+	scanTimeout  time.Duration
+}
+
+func loadConfig() config {
+	// 実行ファイルと同じディレクトリの .env を読む（なければ無視）
+	exe, _ := os.Executable()
+	_ = godotenv.Load(filepath.Join(filepath.Dir(exe), ".env"))
+	// カレントディレクトリの .env も読む（開発時用）
+	_ = godotenv.Load()
+
+	cfg := config{
+		deviceName:   "Clawdial",
+		pollInterval: 60 * time.Second,
+		scanTimeout:  15 * time.Second,
+	}
+	if v := os.Getenv("CLAWDIAL_DEVICE_NAME"); v != "" {
+		cfg.deviceName = v
+	}
+	if v := os.Getenv("CLAWDIAL_POLL_INTERVAL"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.pollInterval = time.Duration(n) * time.Second
+		}
+	}
+	if v := os.Getenv("CLAWDIAL_SCAN_TIMEOUT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.scanTimeout = time.Duration(n) * time.Second
+		}
+	}
+	return cfg
+}
 
 // ---- credentials ----
 
@@ -93,7 +128,7 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-func fetchUsage(token string) (p *payload, retryAfter time.Duration) {
+func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration) {
 	req, _ := http.NewRequest("POST", apiURL, bytes.NewReader(apiBody))
 	req.Header.Set("anthropic-version", "2023-06-01")
 	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
@@ -110,7 +145,7 @@ func fetchUsage(token string) (p *payload, retryAfter time.Duration) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		wait := pollInterval
+		wait := cfg.pollInterval
 		if ra := resp.Header.Get("retry-after"); ra != "" {
 			if secs, err := strconv.ParseFloat(ra, 64); err == nil {
 				wait = time.Duration(secs) * time.Second
@@ -133,7 +168,7 @@ func fetchUsage(token string) (p *payload, retryAfter time.Duration) {
 
 	pct := func(util string) int {
 		f, err := strconv.ParseFloat(strings.TrimSpace(util), 64)
-		if err != nil || math.IsNaN(f) {
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
 			return 0
 		}
 		return clamp(int(math.Round(f*100)), 0, 100)
@@ -141,7 +176,7 @@ func fetchUsage(token string) (p *payload, retryAfter time.Duration) {
 
 	resetMin := func(ts string) int {
 		f, err := strconv.ParseFloat(strings.TrimSpace(ts), 64)
-		if err != nil {
+		if err != nil || math.IsInf(f, 0) {
 			return 0
 		}
 		mins := (f - now) / 60.0
@@ -164,15 +199,15 @@ func fetchUsage(token string) (p *payload, retryAfter time.Duration) {
 
 var adapter = bluetooth.DefaultAdapter
 
-func findDevice() (bluetooth.ScanResult, error) {
-	log.Printf("Scanning for '%s'...", deviceName)
+func findDevice(cfg config) (bluetooth.ScanResult, error) {
+	log.Printf("Scanning for '%s'...", cfg.deviceName)
 	if err := adapter.Enable(); err != nil {
 		return bluetooth.ScanResult{}, fmt.Errorf("enable adapter: %w", err)
 	}
 
 	found := make(chan bluetooth.ScanResult, 1)
 	err := adapter.Scan(func(a *bluetooth.Adapter, r bluetooth.ScanResult) {
-		if r.LocalName() == deviceName {
+		if r.LocalName() == cfg.deviceName {
 			a.StopScan()
 			found <- r
 		}
@@ -185,19 +220,22 @@ func findDevice() (bluetooth.ScanResult, error) {
 	case r := <-found:
 		log.Printf("Found: %s", r.Address)
 		return r, nil
-	case <-time.After(15 * time.Second):
-		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", deviceName)
+	case <-time.After(cfg.scanTimeout):
+		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	}
 }
 
-func run() error {
+func run(cfg config) error {
 	token, err := loadToken()
 	if err != nil {
 		return err
 	}
 
+	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
+		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
+
 	for {
-		result, err := findDevice()
+		result, err := findDevice(cfg)
 		if err != nil {
 			log.Printf("Scan error: %v. Retrying in 5s...", err)
 			time.Sleep(5 * time.Second)
@@ -212,7 +250,7 @@ func run() error {
 		}
 		log.Println("Connected!")
 
-		if err := runSession(&dev, token); err != nil {
+		if err := runSession(&dev, token, cfg); err != nil {
 			log.Printf("Session error: %v", err)
 		}
 		dev.Disconnect()
@@ -228,7 +266,7 @@ func mustUUID(s string) bluetooth.UUID {
 	return u
 }
 
-func runSession(dev *bluetooth.Device, token string) error {
+func runSession(dev *bluetooth.Device, token string, cfg config) error {
 	svc, err := dev.DiscoverServices([]bluetooth.UUID{
 		mustUUID("4c41555a-4465-7669-6365-000000000001"),
 	})
@@ -246,7 +284,7 @@ func runSession(dev *bluetooth.Device, token string) error {
 
 	var cached *payload
 	for {
-		p, retryAfter := fetchUsage(token)
+		p, retryAfter := fetchUsage(token, cfg)
 
 		var send *payload
 		switch {
@@ -266,7 +304,7 @@ func runSession(dev *bluetooth.Device, token string) error {
 		}
 		log.Printf("Sent: %s", data)
 
-		wait := pollInterval
+		wait := cfg.pollInterval
 		if retryAfter > 0 {
 			wait = retryAfter
 			log.Printf("Waiting %.0fs before retry...", wait.Seconds())
@@ -277,7 +315,8 @@ func runSession(dev *bluetooth.Device, token string) error {
 
 func main() {
 	log.SetFlags(log.Ltime)
-	if err := run(); err != nil {
+	cfg := loadConfig()
+	if err := run(cfg); err != nil {
 		log.Fatal(err)
 	}
 }
