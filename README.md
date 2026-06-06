@@ -73,7 +73,7 @@ Clawdial/
 1. Connect M5Stack Dial to your PC with a USB-C cable
 2. Open this repository folder in VS Code (`File → Open Folder`)
 3. Click the **PlatformIO icon** in the left sidebar (the alien head icon)
-4. Under `m5stack-dial → General`, click **Upload**
+4. Under `m5stack-stamps3 → General`, click **Upload**
 5. Wait for `SUCCESS` in the terminal — this takes about a minute on first run (downloading toolchain)
 
 > **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
@@ -105,7 +105,7 @@ clawdial-daemon.exe     # Windows
 ```
 
 > **Token usage**
-> The daemon fetches usage by making a minimal 1-token API call (claude-haiku) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.
+> The daemon fetches usage by making a minimal 1-token API call (`claude-haiku-4-5-20251001`) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.
 
 The daemon must **stay running** while you use Claude Code.
 Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
