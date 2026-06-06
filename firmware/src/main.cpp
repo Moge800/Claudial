@@ -32,8 +32,9 @@ static const unsigned long BLE_TIMEOUT_DEFAULT_MS = 150000UL;
 static uint8_t display_rotation;  // NVSから読み取り / read from NVS
 static int session_limit;
 static int week_limit;
-static int session_pct = 0;
-static int week_pct    = 0;
+static int  session_pct = 0;
+static int  week_pct    = 0;
+static bool last_stale  = false;  // BLE受信時のstale状態を保持 / persist stale flag between BLE updates
 static edit_target_t edit_target = EDIT_SESSION;
 
 // 警告状態 / Warning state
@@ -102,7 +103,9 @@ void loop() {
     unsigned long now = millis();
     lv_tick_inc(now - last_lvgl_tick);
     last_lvgl_tick = now;
-    lv_timer_handler();
+    uint32_t sleep_ms = lv_timer_handler();  // 次タイマーまでの推奨待機時間を返す / returns ms until next timer
+    // CPUを100%使わないよう最低1ms・最大10msのyield / yield 1-10ms to avoid pegging the CPU
+    delay(constrain(sleep_ms, 1, 10));
 
     // BLEデータを500msごとに反映 / Apply BLE data every 500ms
     if (now - last_ble_ms >= 500) {
@@ -133,12 +136,13 @@ void loop() {
             // ok:true かつ BLE受信あり → 正常 / ok:true with received data → normal
             session_pct = constrain(d.session_pct, 0, 100);
             week_pct    = constrain(d.week_pct,    0, 100);
+            last_stale  = d.stale;  // 次回のUI更新でも使えるよう保持 / keep for subsequent UI calls
             if (is_offline) {
                 is_offline = false;
                 ui_set_offline(false);
             }
             // stale=true は前回cached値（レート制限中など）/ stale=true means cached value (e.g. rate-limited)
-            ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, d.stale);
+            ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, last_stale);
         }
         // has_data==false のときは何もしない（初回接続待ち）
         // Do nothing while has_data==false (waiting for first connection).
@@ -163,7 +167,7 @@ void loop() {
             week_limit = constrain(week_limit + adj, 0, 100);
             storage_set_week_limit(week_limit);
         }
-        ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
+        ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, last_stale);
         beep(adj > 0 ? 1200 : 800, 20);
     }
 
@@ -196,7 +200,7 @@ void loop() {
                 noTone(BUZZER_PIN);
             } else {
                 edit_target = (edit_target == EDIT_SESSION) ? EDIT_WEEK : EDIT_SESSION;
-                ui_update(session_pct, week_pct, session_limit, week_limit, edit_target);
+                ui_update(session_pct, week_pct, session_limit, week_limit, edit_target, last_stale);
                 beep(1500, 40);
             }
         }
