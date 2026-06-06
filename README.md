@@ -90,10 +90,6 @@ Using the install script (recommended):
 ```
 # Windows — double-click or run in terminal
 daemon\install.bat
-
-# macOS / Linux
-chmod +x daemon/install.sh
-./daemon/install.sh
 ```
 
 Manual build:
@@ -101,9 +97,11 @@ Manual build:
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon       # Linux / macOS
+./clawdial-daemon       # Linux / macOS (untested)
 clawdial-daemon.exe     # Windows
 ```
+
+> **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms. Use at your own risk.
 
 > **Token usage**
 > The daemon fetches usage by making a minimal 1-token API call (`claude-haiku-4-5-20251001`) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.

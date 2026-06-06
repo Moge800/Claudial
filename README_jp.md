@@ -90,10 +90,6 @@ Clawdial/
 ```
 # Windows: install.bat をダブルクリック、またはターミナルで実行
 daemon\install.bat
-
-# macOS / Linux
-chmod +x daemon/install.sh
-./daemon/install.sh
 ```
 
 手動でビルドする場合：
@@ -101,9 +97,11 @@ chmod +x daemon/install.sh
 ```bash
 cd daemon
 go build -o clawdial-daemon .
-./clawdial-daemon        # Linux / macOS
+./clawdial-daemon        # Linux / macOS（未テスト）
 clawdial-daemon.exe      # Windows
 ```
+
+> **macOS / Linux:** ビルド・起動は可能ですが、動作未検証です。自己責任でお使いください。
 
 > **トークン消費について**
 > デーモンはポーリングのたびに `claude-haiku-4-5-20251001` へ 1 トークンのAPIコールを行い、レスポンスのレートリミットヘッダーから使用率を取得します。デフォルトの 60 秒間隔では約 $0.03/日 の消費で、通常の Claude Code 利用と比べると誤差の範囲です。
