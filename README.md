@@ -101,7 +101,7 @@ go build -o clawdial-daemon .
 clawdial-daemon.exe     # Windows
 ```
 
-> **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms. Use at your own risk.
+> **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.
 
 > **Token usage**
 > The daemon fetches usage by making a minimal 1-token API call (`claude-haiku-4-5-20251001`) every poll interval and reading the rate-limit headers from the response. This costs roughly $0.03/day at the default 60-second interval — well within the noise of a normal Claude Code session.
