@@ -21,7 +21,7 @@ A 3D-printed stand keeps the dial upright with the USB port at the bottom.
 
 > 🖨️ Stand design: [MakerWorld: M5Stack Dial Rotary Knob Stand](https://makerworld.com/ja/models/763395-m5stack-dial-rotary-knob-stand)
 
-With the stand, long-press the touch to set orientation to "USB at bottom" (the default).
+With the stand, long-press the touch to toggle orientation — the default is "USB at bottom".
 
 ---
 
