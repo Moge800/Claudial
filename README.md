@@ -175,8 +175,8 @@ Shares the same UUID as Clawdmeter.
 
 | Item | UUID |
 |------|------|
-| Service | `436c6177-6469-616c-0000-000000000001` |
-| RX Characteristic (write) | `436c6177-6469-616c-0000-000000000002` |
+| Service | `29590732-a70c-4ea9-a739-000000000001` |
+| RX Characteristic (write) | `29590732-a70c-4ea9-a739-000000000002` |
 
 JSON payload (daemon → device):
 

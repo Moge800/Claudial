@@ -4,10 +4,10 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// Clawdial 固有の BLE UUID（"Clawdial" ASCII 埋め込み）/ Clawdial-specific BLE UUIDs (ASCII "Clawdial" embedded)
-#define SVC_UUID  "436c6177-6469-616c-0000-000000000001"
-#define RX_UUID   "436c6177-6469-616c-0000-000000000002"
-#define TX_UUID   "436c6177-6469-616c-0000-000000000003"
+// Clawdial 固有の BLE UUID（RFC 4122 v4）/ Clawdial-specific BLE UUIDs (RFC 4122 version 4)
+#define SVC_UUID  "29590732-a70c-4ea9-a739-000000000001"
+#define RX_UUID   "29590732-a70c-4ea9-a739-000000000002"
+#define TX_UUID   "29590732-a70c-4ea9-a739-000000000003"
 
 // connected / latest_data 両方を同じ mutex で保護 / Protect both connected and latest_data with the same mutex
 static portMUX_TYPE data_mux   = portMUX_INITIALIZER_UNLOCKED;
