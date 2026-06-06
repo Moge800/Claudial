@@ -100,8 +100,10 @@ void loop() {
         }
     }
 
-    // エンコーダでリミット調整
+    // エンコーダでリミット調整（ISR競合防止のため割り込み停止してスナップショット）
+    noInterrupts();
     int enc = enc_count;
+    interrupts();
     if (enc != last_enc) {
         int delta = enc - last_enc;
         last_enc = enc;
