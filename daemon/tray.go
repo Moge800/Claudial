@@ -116,12 +116,18 @@ CLAWDIAL_SCAN_TIMEOUT=15
 // openOrCreateConfig creates .env with defaults if absent, then opens it.
 func openOrCreateConfig() {
 	p := configPath()
-	if _, err := os.Stat(p); os.IsNotExist(err) {
-		if werr := os.WriteFile(p, []byte(defaultEnvContent), 0600); werr != nil {
-			log.Printf("Failed to create config: %v", werr)
+	// O_EXCL でアトミックに作成 — stat と write の間に別プロセスが作った場合も上書きしない。
+	// Use O_EXCL for atomic creation — avoids clobbering a config written between stat and write.
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err == nil {
+		_, werr := f.WriteString(defaultEnvContent)
+		f.Close()
+		if werr != nil {
+			log.Printf("Failed to write config: %v", werr)
 			return
 		}
 		log.Printf("Created default config: %s", p)
 	}
+	// ファイルが既存（ErrExist）の場合はそのまま開く / If file already exists, just open it.
 	openFile(p)
 }

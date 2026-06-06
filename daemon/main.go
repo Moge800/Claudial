@@ -283,9 +283,22 @@ func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 		return bluetooth.ScanResult{}, err
 	case <-time.After(cfg.scanTimeout):
 		adapter.StopScan()
+		// タイムアウト直前にコールバックが結果を詰めていた場合を救う / Drain any result queued just before timeout.
+		select {
+		case r := <-found:
+			log.Printf("Found (at timeout boundary): %s", r.Address)
+			return r, nil
+		default:
+		}
 		return bluetooth.ScanResult{}, fmt.Errorf("device '%s' not found", cfg.deviceName)
 	case <-ctx.Done():
 		adapter.StopScan()
+		select {
+		case r := <-found:
+			log.Printf("Found (at cancel boundary): %s", r.Address)
+			return r, nil
+		default:
+		}
 		return bluetooth.ScanResult{}, ctx.Err()
 	}
 }
