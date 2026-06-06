@@ -195,6 +195,13 @@ void loop() {
         if (!long_press_fired && touch_start_ms > 0 &&
             (now - touch_start_ms >= 1000)) {
             long_press_fired = true;
+            // 未保存のリミット変更をflushしてから再起動（デバウンス中の設定を失わないため）
+            // Flush any pending limit save before rebooting so debounced changes are not lost.
+            if (nvs_pending) {
+                nvs_pending = false;
+                storage_set_session_limit(session_limit);
+                storage_set_week_limit(week_limit);
+            }
             // rotation トグル → NVS保存 → 再起動 / toggle rotation, save to NVS, reboot
             uint8_t new_rot = (display_rotation == 0) ? 2 : 0;
             storage_set_rotation(new_rot);
@@ -228,19 +235,18 @@ void loop() {
             noTone(BUZZER_PIN);
         }
     } else {
-    warn_state_t ws = max(calc_warn(session_pct, session_limit),
-                          calc_warn(week_pct, week_limit));
-
-    if (ws > warn_state) {
-        muted = false;
-        if (ws == WARN_NEAR) beep_near();
-    }
-    if (ws < warn_state) {
-        muted = false;
-        ui_set_alert(false);
-        noTone(BUZZER_PIN);
-    }
-    warn_state = ws;
+        warn_state_t ws = max(calc_warn(session_pct, session_limit),
+                              calc_warn(week_pct, week_limit));
+        if (ws > warn_state) {
+            muted = false;
+            if (ws == WARN_NEAR) beep_near();
+        }
+        if (ws < warn_state) {
+            muted = false;
+            ui_set_alert(false);
+            noTone(BUZZER_PIN);
+        }
+        warn_state = ws;
     } // end !is_offline
 
     // WARN_LIMIT: 500ms周期でフラッシュ＋ビープ / WARN_LIMIT: flash + beep every 500ms

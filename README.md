@@ -133,7 +133,7 @@ The rotary dial is the core interaction — it lets you set the usage threshold 
 
 1. **Short-press** the touch screen to select which limit to edit — **Session** or **Week** (the active one is highlighted on the display)
 2. **Rotate the dial** to raise or lower the threshold **±1% per click**
-3. The limit is **saved instantly** to the device's non-volatile storage — it persists across reboots and power cuts, no reflashing needed
+3. The limit is **saved to non-volatile storage ~1 second after you stop turning** — it persists across reboots and power cuts, no reflashing needed (avoid power-cycling immediately after adjusting)
 
 > **Example:** Set Session limit to 80% → Clawdial double-beeps when you hit 75%, then flashes red and beeps continuously at 80%.
 

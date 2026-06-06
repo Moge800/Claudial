@@ -31,10 +31,10 @@ static class ServerCB : public NimBLEServerCallbacks {
 
 static class RxCB : public NimBLECharacteristicCallbacks {
     void onWrite(NimBLECharacteristic *c) override {
+        // getValue前にサイズチェック（コピー前に拒否してヒープ確保を回避）
+        // Check length before getValue() to avoid the allocation/copy for oversized payloads.
+        if (c->getDataLength() > 256) return;
         std::string val = c->getValue();
-        // 既知ペイロードは最大~80バイト。過大なデータはヒープ枯渇防止のため拒否
-        // Known payload is ~80 bytes max. Reject oversized writes to prevent heap exhaustion.
-        if (val.size() > 256) return;
         JsonDocument doc;
         if (deserializeJson(doc, val) != DeserializationError::Ok) return;
 

@@ -169,8 +169,11 @@ func fetchUsage(token string, cfg config) (p *payload, retryAfter time.Duration)
 	if resp.StatusCode == 429 {
 		wait := cfg.pollInterval
 		if ra := resp.Header.Get("retry-after"); ra != "" {
+			// Retry-After は秒数またはHTTP-date形式 / Retry-After can be delta-seconds or HTTP-date.
 			if secs, err := strconv.ParseFloat(ra, 64); err == nil {
 				wait = time.Duration(secs) * time.Second
+			} else if t, err := http.ParseTime(ra); err == nil {
+				wait = time.Until(t)
 			}
 		}
 		if wait > maxRetryWait {
