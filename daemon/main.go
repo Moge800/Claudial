@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -35,6 +36,10 @@ const (
 // 負の Retry-After 日時と区別するため time.Duration の最小値を使う。
 // Using MinInt64 distinguishes it from a legitimate negative Retry-After date.
 const retryExpired = time.Duration(-1 << 63)
+
+// errTokenExpired は401時にrunSession→runへ伝えるためのセンチネルエラー。
+// errTokenExpired is the sentinel error propagated from runSession to run on HTTP 401.
+var errTokenExpired = errors.New("token expired")
 
 var apiBody = []byte(`{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`)
 
@@ -382,13 +387,25 @@ func run(ctx context.Context, cfg config) error {
 			continue
 		}
 		if err := runSession(ctx, &dev, token, cfg, &cached); err != nil {
+			dev.Disconnect()
 			if ctx.Err() != nil {
-				dev.Disconnect()
 				return nil // キャンセルによるセッション終了は正常 / clean exit on cancel
 			}
-			log.Printf("Session error: %v", err)
+			if errors.Is(err, errTokenExpired) {
+				// 401 は再接続してもすぐ失敗するため、60秒待ってからリトライ。
+				// 401 will fail again immediately — wait 60s before reconnecting.
+				log.Printf("Token expired. Waiting 60s before retry — run 'claude login' to refresh.")
+				select {
+				case <-time.After(60 * time.Second):
+				case <-ctx.Done():
+					return nil
+				}
+			} else {
+				log.Printf("Session error: %v", err)
+			}
+		} else {
+			dev.Disconnect()
 		}
-		dev.Disconnect()
 		log.Println("Disconnected. Reconnecting...")
 	}
 }
@@ -471,7 +488,7 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 		// retryExpired is the 401 signal → send ok:false then end session.
 		if retryAfter == retryExpired {
 			sendError(rx)
-			return fmt.Errorf("token expired: reconnect to reload credentials")
+			return errTokenExpired
 		}
 
 		var send *payload
@@ -514,6 +531,7 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime)
+	ensureSingleInstance() // 多重起動を防ぐ / Exit if another instance is already running.
 	cfg := loadConfig()
 	setupLogFile()
 	runWithTray(cfg)
