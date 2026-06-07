@@ -49,18 +49,16 @@ echo.
 :: Auto-detect COM port via WMI.
 :: First try devices matching known USB-serial chips; if none found, list ALL COM ports
 :: so the user can pick without needing to know the chip name.
-:: CR note: for /f strips \n but keeps \r from piped output.  PowerShell's default Write
-:: appends CRLF, leaving a trailing CR in every token.  Using [Console]::Write with [char]10
-:: emits LF-only lines, so tokens are clean -- no hidden CR, and quoted "set" is safe.
+:: Output integers only (no device label): Shift-JIS device names can contain bytes that
+:: equal ASCII '|' (e.g. katakana Po U+30DD = 0x83 0x7C in Shift-JIS), which would break
+:: "for /f delims=|" splitting if labels were included.  Outputting only the port number
+:: via [Console]::Write + [char]10 (LF-only, no CR) keeps tokens clean and ASCII-safe.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [PSCustomObject]@{Label=$_.Name; Num=[int]$Matches[1]} } } | Sort-Object Num | ForEach-Object { [Console]::Write($_.Label + '|' + $_.Num + [char]10) }"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [int]$Matches[1] } } | Sort-Object -Unique | ForEach-Object { [Console]::Write([string]$_ + [char]10) }"') do (
     set /a PORT_COUNT+=1
-    for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
-        set "PORT_LABEL_!PORT_COUNT!=%%A"
-        set "PORT_VAL_!PORT_COUNT!=COM%%B"
-    )
+    set "PORT_VAL_!PORT_COUNT!=COM%%L"
 )
 
 if !PORT_COUNT!==0 (
@@ -69,12 +67,12 @@ if !PORT_COUNT!==0 (
     echo.
     set /p PORT="Enter COM port manually (e.g. COM3): "
 ) else if !PORT_COUNT!==1 (
-    echo [OK] Auto-detected: !PORT_LABEL_1!
+    echo [OK] Auto-detected: !PORT_VAL_1!
     set PORT=!PORT_VAL_1!
 ) else (
     echo Found multiple devices:
     for /l %%i in (1,1,!PORT_COUNT!) do (
-        echo   [%%i] !PORT_LABEL_%%i!
+        echo   [%%i] !PORT_VAL_%%i!
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
