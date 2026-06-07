@@ -21,7 +21,7 @@ echo.
 python -m esptool version >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing esptool...
-    python -m pip install esptool --quiet
+    python -m pip install esptool --quiet || python -m pip install --user esptool --quiet
     if errorlevel 1 (
         echo [ERROR] Failed to install esptool.
         pause

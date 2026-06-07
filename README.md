@@ -49,6 +49,7 @@ Clawdial/
 
 | Item | Requirement |
 |------|------------|
+| [Python 3](https://www.python.org/) | Firmware flashing via `flash.bat` (not required if using PlatformIO) |
 | [PlatformIO](https://platformio.org/) | Firmware build & flash (not required if using pre-built firmware) |
 | [Go 1.26+](https://go.dev/dl/) | Daemon build (not required if using pre-built binary) |
 | [Claude Code](https://claude.ai/code) | Auth credentials (`claude login`) |
