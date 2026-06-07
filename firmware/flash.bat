@@ -92,11 +92,15 @@ if !PORT_COUNT!==0 (
 )
 
 :: Normalize PORT: strip surrounding quotes and all spaces.
-:: Use %VAR:"=% syntax (percent-expansion) instead of !VAR:"=! (delayed-expansion)
-:: because cmd.exe quote-pairs the outer " before evaluating the ! token, which would
-:: close the set argument at the inner " and corrupt PORT.
-set PORT=%PORT:"=%
-set PORT=%PORT: =%
+:: - Use %VAR% (percent-expansion) instead of !VAR! (delayed-expansion) because cmd.exe
+::   quote-pairs the outer " of  set "PORT=!PORT:"=!"  before evaluating the ! token,
+::   closing the set argument at the inner " and corrupting PORT.
+:: - Use set "PORT=..." (quoted form) to prevent metacharacters (&, |, >, <) in manually
+::   entered values from being executed before validation runs.
+:: - Use ^" inside the search pattern to represent a literal " without terminating the
+::   outer set " delimiter.
+set "PORT=%PORT:^"=%"
+set "PORT=%PORT: =%"
 
 :: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
 :: PORT_VAL entries are already clean "COMn" (reconstructed at capture time).
