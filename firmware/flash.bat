@@ -35,7 +35,7 @@ if errorlevel 1 (
 echo.
 
 :: Locate firmware binary (same directory as this script)
-set BIN=%~dp0clawdial-firmware.bin
+set "BIN=%~dp0clawdial-firmware.bin"
 if not exist "!BIN!" (
     echo [ERROR] clawdial-firmware.bin not found next to this script.
     echo         Download it from:
@@ -106,7 +106,7 @@ set "PORT=%PORT: =%"
 :: echo( avoids the trailing space that bare "echo" adds, keeping the pipe clean.
 :: Omit the $ anchor: piped echo output ends with \r\n and findstr on some Windows
 :: versions includes the \r in line content, causing $ to fail for valid input.
-echo(!PORT!| findstr /r /i "^COM[0-9]" >nul
+echo(!PORT!| findstr /r /i "^COM[0-9][0-9]*$" >nul
 if errorlevel 1 (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
