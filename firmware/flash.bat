@@ -102,38 +102,12 @@ if !PORT_COUNT!==0 (
 set "PORT=%PORT:^"=%"
 set "PORT=%PORT: =%"
 
-:: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
-:: PORT_VAL entries are already clean "COMn" (reconstructed at capture time).
-:: For manually entered PORT (set /p), digit-strip catches arithmetic operators.
-set "PORT_PREFIX=!PORT:~0,3!"
-set "PORT_SUFFIX=!PORT:~3!"
-set "PORT_VALID=1"
-if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
-if "!PORT_SUFFIX!"==""           set PORT_VALID=0
-:: Digit-strip uses sequential set commands rather than a for-loop.
-:: Observed failure: placing  for %%D in (0..9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
-:: inside this if block caused CHECK to become "4=" instead of "" for suffix "3".
-:: Root cause: the digit-strip for loop has no enclosing for loop that owns %%D, so
-:: cmd.exe's block pre-expansion converts %%D to %D; the delayed substitution then
-:: uses the literal string "%D" as its search pattern instead of each digit, and the
-:: strip silently fails.  Sequential set commands are not affected by this issue.
-if "!PORT_VALID!"=="1" goto :do_digit_strip
-goto :digit_strip_done
-:do_digit_strip
-set "PORT_CHECK=!PORT_SUFFIX!"
-set "PORT_CHECK=!PORT_CHECK:0=!"
-set "PORT_CHECK=!PORT_CHECK:1=!"
-set "PORT_CHECK=!PORT_CHECK:2=!"
-set "PORT_CHECK=!PORT_CHECK:3=!"
-set "PORT_CHECK=!PORT_CHECK:4=!"
-set "PORT_CHECK=!PORT_CHECK:5=!"
-set "PORT_CHECK=!PORT_CHECK:6=!"
-set "PORT_CHECK=!PORT_CHECK:7=!"
-set "PORT_CHECK=!PORT_CHECK:8=!"
-set "PORT_CHECK=!PORT_CHECK:9=!"
-if not "!PORT_CHECK!"=="" set PORT_VALID=0
-:digit_strip_done
-if "!PORT_VALID!"=="0" (
+:: Validate PORT: must be COM followed by one or more digits (case-insensitive).
+:: echo( avoids the trailing space that bare "echo" adds, keeping the pipe clean.
+:: Omit the $ anchor: piped echo output ends with \r\n and findstr on some Windows
+:: versions includes the \r in line content, causing $ to fail for valid input.
+echo(!PORT!| findstr /r /i "^COM[0-9]" >nul
+if errorlevel 1 (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
     exit /b 1
@@ -145,7 +119,7 @@ echo [INFO] Flashing to !PORT! at 921600 baud...
 echo        This takes about 30 seconds.
 echo.
 python -m esptool --chip esp32s3 --port "!PORT!" --baud 921600 ^
-    write_flash 0x0 "!BIN!"
+    write-flash 0x0 "!BIN!"
 if errorlevel 1 (
     echo.
     echo [ERROR] Flash failed.
