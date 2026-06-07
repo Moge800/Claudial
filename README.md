@@ -49,7 +49,7 @@ Clawdial/
 
 | Item | Requirement |
 |------|------------|
-| [PlatformIO](https://platformio.org/) | Firmware build & flash |
+| [PlatformIO](https://platformio.org/) | Firmware build & flash (not required if using pre-built firmware) |
 | [Go 1.26+](https://go.dev/dl/) | Daemon build (not required if using pre-built binary) |
 | [Claude Code](https://claude.ai/code) | Auth credentials (`claude login`) |
 | Bluetooth LE 5.0 adapter | PC-side BLE communication |
@@ -60,21 +60,24 @@ Clawdial/
 
 ### Firmware
 
-**1. Install VS Code and PlatformIO**
+#### Option A — Flash pre-built binary (no PlatformIO required)
+
+1. Download `clawdial-firmware.bin` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest) and place it next to `firmware/flash.bat`
+2. Connect M5Stack Dial via USB-C
+3. Run `firmware\flash.bat` and enter the COM port when prompted (requires Python)
+
+> **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
+
+#### Option B — Build and flash with PlatformIO
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/)
 2. Open the Extensions panel (`Ctrl+Shift+X`), search for **PlatformIO IDE**, and install it
 3. Restart VS Code when prompted
-
-**2. Flash the firmware**
-
-1. Connect M5Stack Dial to your PC with a USB-C cable
-2. Open this repository folder in VS Code (`File → Open Folder`)
-3. Click the **PlatformIO icon** in the left sidebar (the alien head icon)
-4. Under `m5stack-stamps3 → General`, click **Upload**
-5. Wait for `SUCCESS` in the terminal — this takes about a minute on first run (downloading toolchain)
-
-> **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
+4. Connect M5Stack Dial to your PC with a USB-C cable
+5. Open this repository folder in VS Code (`File → Open Folder`)
+6. Click the **PlatformIO icon** in the left sidebar (the alien head icon)
+7. Under `m5stack-stamps3 → General`, click **Upload**
+8. Wait for `SUCCESS` in the terminal — this takes about a minute on first run (downloading toolchain)
 
 After flashing, you can unplug the USB cable. Normal use is USB-C power (charger, etc.) + BLE.
 

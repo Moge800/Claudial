@@ -49,7 +49,7 @@ Clawdial/
 
 | 項目 | 要件 |
 |------|------|
-| [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み |
+| [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み（ビルド済みファームウェアを使う場合は不要） |
 | [Go 1.26+](https://go.dev/dl/) | デーモンのビルド（ビルド済みバイナリを使う場合は不要） |
 | [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
 | Bluetooth LE 5.0 対応アダプタ | PC 側 BLE 通信 |
@@ -60,21 +60,24 @@ Clawdial/
 
 ### ファームウェア
 
-**1. VS Code と PlatformIO をインストール**
+#### 方法A — ビルド済みファームウェアを書き込む（PlatformIO不要）
+
+1. [最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-firmware.bin` をダウンロードして `firmware/flash.bat` と同じフォルダに置く
+2. M5Stack Dial を USB-C で PC に接続
+3. `firmware\flash.bat` を実行してCOMポートを入力（Python が必要）
+
+> **ポートが見つからない場合**： Windows では [CP210x USB ドライバ](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) が必要なことがあります。インストール後、ケーブルを差し直してください。
+
+#### 方法B — PlatformIO でビルドして書き込む
 
 1. [Visual Studio Code](https://code.visualstudio.com/) をインストール
 2. 拡張機能パネル（`Ctrl+Shift+X`）で **PlatformIO IDE** を検索してインストール
 3. 促されたら VS Code を再起動
-
-**2. ファームウェアを書き込む**
-
-1. M5Stack Dial を USB-C ケーブルで PC に接続
-2. VS Code でこのリポジトリのフォルダを開く（`ファイル → フォルダを開く`）
-3. 左サイドバーの **PlatformIO アイコン**（エイリアンのアイコン）をクリック
-4. `m5stack-stamps3 → General` の **Upload** をクリック
-5. ターミナルに `SUCCESS` が出たら完了（初回は toolchain のダウンロードで1分ほどかかります）
-
-> **ポートが見つからない場合**： Windows では [CP210x USB ドライバ](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) が必要なことがあります。インストール後、ケーブルを差し直してください。
+4. M5Stack Dial を USB-C ケーブルで PC に接続
+5. VS Code でこのリポジトリのフォルダを開く（`ファイル → フォルダを開く`）
+6. 左サイドバーの **PlatformIO アイコン**（エイリアンのアイコン）をクリック
+7. `m5stack-stamps3 → General` の **Upload** をクリック
+8. ターミナルに `SUCCESS` が出たら完了（初回は toolchain のダウンロードで1分ほどかかります）
 
 書き込み完了後は USB を抜いてかまいません。通常使用は USB-C 給電（充電器など）＋ BLE 通信です。
 
