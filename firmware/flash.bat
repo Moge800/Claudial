@@ -46,19 +46,20 @@ if not exist "!BIN!" (
 echo [OK] Found: !BIN!
 echo.
 
-:: Auto-detect COM port via WMI.
-:: First try devices matching known USB-serial chips; if none found, list ALL COM ports
-:: so the user can pick without needing to know the chip name.
-:: Output integers only (no device label): Shift-JIS device names can contain bytes that
-:: equal ASCII '|' (e.g. katakana Po U+30DD = 0x83 0x7C in Shift-JIS), which would break
-:: "for /f delims=|" splitting if labels were included.  Outputting only the port number
-:: via [Console]::Write + [char]10 (LF-only, no CR) keeps tokens clean and ASCII-safe.
+:: Auto-detect COM port via registry + temp file.
+:: HKLM\HARDWARE\DEVICEMAP\SERIALCOMM lists every active COM port as a REG_SZ value.
+:: Piping reg query into "for /f" still leaves \r in tokens (cmd pipe text mode).
+:: Writing to a temp file first and reading with "for /f usebackq" strips CRLF correctly.
 echo [INFO] Scanning for connected devices...
+set "CWPORTS_TMP=%TEMP%\cwports_%RANDOM%_%RANDOM%.tmp"
+reg query "HKLM\HARDWARE\DEVICEMAP\SERIALCOMM" 2>nul | findstr "REG_SZ" > "!CWPORTS_TMP!"
 set PORT_COUNT=0
-for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [int]$Matches[1] } } | Sort-Object -Unique | ForEach-Object { [Console]::Write([string]$_ + [char]10) }"') do (
-    set /a PORT_COUNT+=1
-    set "PORT_VAL_!PORT_COUNT!=COM%%L"
+if exist "!CWPORTS_TMP!" (
+    for /f "usebackq tokens=3" %%P in ("!CWPORTS_TMP!") do (
+        set /a PORT_COUNT+=1
+        set "PORT_VAL_!PORT_COUNT!=%%P"
+    )
+    del "!CWPORTS_TMP!" 2>nul
 )
 
 if !PORT_COUNT!==0 (
