@@ -49,18 +49,17 @@ echo.
 :: Auto-detect COM port via WMI.
 :: First try devices matching known USB-serial chips; if none found, list ALL COM ports
 :: so the user can pick without needing to know the chip name.
+:: CR note: for /f strips \n but keeps \r from piped output.  PowerShell's default Write
+:: appends CRLF, leaving a trailing CR in every token.  Using [Console]::Write with [char]10
+:: emits LF-only lines, so tokens are clean -- no hidden CR, and quoted "set" is safe.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [PSCustomObject]@{Label=$_.Name; Num=[int]$Matches[1]} } } | Sort-Object Num | ForEach-Object { $_.Label + '|' + $_.Num }"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [PSCustomObject]@{Label=$_.Name; Num=[int]$Matches[1]} } } | Sort-Object Num | ForEach-Object { [Console]::Write($_.Label + '|' + $_.Num + [char]10) }"') do (
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
-        set PORT_LABEL_!PORT_COUNT!=%%A
-        :: %%B is the raw COM number from PowerShell (e.g. "3" possibly with trailing CR).
-        :: set /a reads the value by for-variable substitution and converts it to a clean integer,
-        :: then we immediately reconstruct "COMn" so PORT_VAL never carries hidden characters.
-        set /a PORT_NUM_TMP=%%B 2>nul
-        set PORT_VAL_!PORT_COUNT!=COM!PORT_NUM_TMP!
+        set "PORT_LABEL_!PORT_COUNT!=%%A"
+        set "PORT_VAL_!PORT_COUNT!=COM%%B"
     )
 )
 
