@@ -29,11 +29,7 @@ if errorlevel 1 (
     )
     echo [OK] esptool installed.
 ) else (
-    for /f "tokens=2" %%v in ('python -m esptool version 2^>^&1') do (
-        set ESP_VER=%%v
-        goto :esptool_done
-    )
-    :esptool_done
+    for /f "tokens=2" %%v in ('python -m esptool version 2^>^&1') do set "ESP_VER=%%v"
     echo [OK] esptool !ESP_VER! found.
 )
 echo.

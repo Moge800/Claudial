@@ -64,7 +64,7 @@ Clawdial/
 
 1. [最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-firmware.bin` と `flash.bat` の**両方**を同じフォルダにダウンロード
 2. M5Stack Dial を USB-C で PC に接続
-3. `flash.bat` を実行 — 1台だけ検出できた場合はCOMポートを自動選択、複数または未検出の場合は選択・入力を促します（Python が必要）
+3. `flash.bat` を実行 — 1台だけ検出できた場合はCOMポートを自動選択、複数または未検出の場合は番号選択または手動入力を促します（Python が必要）
 
 > **macOS / Linux:** `flash.bat` は Windows 専用です。方法B（PlatformIO）を使用してください。
 
