@@ -104,18 +104,32 @@ set "PORT=%PORT: =%"
 
 :: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
 :: PORT_VAL entries are already clean "COMn" (reconstructed at capture time).
-:: For manually entered PORT (set /p), digit-strip catches arithmetic operators
-:: like '+' or '*' that set /a would silently evaluate to a wrong port number.
+:: For manually entered PORT (set /p), digit-strip catches arithmetic operators.
 set "PORT_PREFIX=!PORT:~0,3!"
 set "PORT_SUFFIX=!PORT:~3!"
 set "PORT_VALID=1"
 if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
 if "!PORT_SUFFIX!"==""           set PORT_VALID=0
-if "!PORT_VALID!"=="1" (
-    set "PORT_CHECK=!PORT_SUFFIX!"
-    for %%D in (0 1 2 3 4 5 6 7 8 9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
-    if not "!PORT_CHECK!"=="" set PORT_VALID=0
-)
+:: Digit-strip must run at the top level (NOT inside an if block) because %%D inside
+:: a parenthesised block is percent-expanded to %D at parse time; at execution time
+:: the for-variable substitution no longer fires, leaving the search pattern literal
+:: and the strip silently failing.  Use sequential set commands instead.
+if "!PORT_VALID!"=="1" goto :do_digit_strip
+goto :digit_strip_done
+:do_digit_strip
+set "PORT_CHECK=!PORT_SUFFIX!"
+set "PORT_CHECK=!PORT_CHECK:0=!"
+set "PORT_CHECK=!PORT_CHECK:1=!"
+set "PORT_CHECK=!PORT_CHECK:2=!"
+set "PORT_CHECK=!PORT_CHECK:3=!"
+set "PORT_CHECK=!PORT_CHECK:4=!"
+set "PORT_CHECK=!PORT_CHECK:5=!"
+set "PORT_CHECK=!PORT_CHECK:6=!"
+set "PORT_CHECK=!PORT_CHECK:7=!"
+set "PORT_CHECK=!PORT_CHECK:8=!"
+set "PORT_CHECK=!PORT_CHECK:9=!"
+if not "!PORT_CHECK!"=="" set PORT_VALID=0
+:digit_strip_done
 if "!PORT_VALID!"=="0" (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
