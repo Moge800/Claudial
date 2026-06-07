@@ -49,20 +49,17 @@ echo.
 :: Auto-detect COM port via WMI.
 :: First try devices matching known USB-serial chips; if none found, list ALL COM ports
 :: so the user can pick without needing to know the chip name.
-:: CR note: for /f strips \n but keeps \r from piped PowerShell output, so %%B (the port
-:: number token) ends with CR.  "set PORT_VAL_N=COM%%B" exploits this: cmd.exe treats the
-:: CR as a command terminator, so it executes "set PORT_VAL_N=COM3" and stops -- the
-:: variable stores a clean "COMn" with no hidden characters.  Avoid "set /a VAR=%%B":
-:: that also splits at the CR but leaves the bare " 2>nul" as a standalone command, which
-:: generates a spurious "The specified drive was not found" error for every device found.
+:: CR note: for /f strips \n but keeps \r from piped output.  PowerShell's default Write
+:: appends CRLF, leaving a trailing CR in every token.  Using [Console]::Write with [char]10
+:: emits LF-only lines, so tokens are clean -- no hidden CR, and quoted "set" is safe.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [PSCustomObject]@{Label=$_.Name; Num=[int]$Matches[1]} } } | Sort-Object Num | ForEach-Object { $_.Label + '|' + $_.Num }"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { [PSCustomObject]@{Label=$_.Name; Num=[int]$Matches[1]} } } | Sort-Object Num | ForEach-Object { [Console]::Write($_.Label + '|' + $_.Num + [char]10) }"') do (
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
-        set PORT_LABEL_!PORT_COUNT!=%%A
-        set PORT_VAL_!PORT_COUNT!=COM%%B
+        set "PORT_LABEL_!PORT_COUNT!=%%A"
+        set "PORT_VAL_!PORT_COUNT!=COM%%B"
     )
 )
 
