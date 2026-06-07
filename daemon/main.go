@@ -454,6 +454,11 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		// ウェイト完了後にキャンセルが来ていた場合もDiscoverServices（非対応）の前に終了する。
+		// Also guard after the wait fires — DiscoverServices is non-cancellable.
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		var discErr error
 		svc, discErr = dev.DiscoverServices([]bluetooth.UUID{
 			mustUUID("29590732-a70c-4ea9-a739-000000000001"),
