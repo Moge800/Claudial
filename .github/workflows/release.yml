@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: '3.x'
           cache: 'pip'
+          cache-dependency-path: firmware/requirements.txt
 
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
