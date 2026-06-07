@@ -50,7 +50,7 @@ Clawdial/
 | Item | Requirement |
 |------|------------|
 | [PlatformIO](https://platformio.org/) | Firmware build & flash |
-| [Go 1.26+](https://go.dev/dl/) | Daemon build |
+| [Go 1.26+](https://go.dev/dl/) | Daemon build (not required if using pre-built binary) |
 | [Claude Code](https://claude.ai/code) | Auth credentials (`claude login`) |
 | Bluetooth LE 5.0 adapter | PC-side BLE communication |
 
@@ -82,24 +82,31 @@ After flashing, you can unplug the USB cable. Normal use is USB-C power (charger
 
 **Prerequisite:** Install [Claude Code](https://claude.ai/code) and run `claude login` before starting the daemon.
 
-Using the install script (recommended):
+#### Option A — Download pre-built binary (no Go required)
+
+Download `clawdial-daemon.exe` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest), place it anywhere you like, and run it. That's it.
+
+#### Option B — Install script (build or download, your choice)
 
 ```
 # Windows — double-click or run in terminal
 daemon\install.bat
+```
 
+The script prompts you to either download the pre-built binary or build from source (Go required for the build option). It also handles startup registration and auth check.
+
+```
 # macOS / Linux (untested — testing planned)
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
 
-Manual build:
+#### Option C — Build manually
 
 ```bash
 cd daemon
-go build -o clawdial-daemon .
-./clawdial-daemon       # Linux / macOS (untested)
-clawdial-daemon.exe     # Windows
+go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .   # Windows
+go build -o clawdial-daemon .                                  # macOS / Linux (untested)
 ```
 
 > **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.

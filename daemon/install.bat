@@ -6,27 +6,54 @@ echo  Clawdial Daemon Installer (Windows)
 echo ========================================
 echo.
 
-:: Check Go
-where go >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Go not found. Install from https://go.dev/dl/
-    pause
-    exit /b 1
+:: Method selection
+echo How would you like to get clawdial-daemon.exe?
+echo   [D] Download pre-built binary from GitHub Releases  (no Go required)
+echo   [B] Build from source                               (requires Go)
+echo.
+set /p METHOD="Choice [D/b]: "
+if /i "!METHOD:~0,1!"=="b" (
+    set DO_BUILD=1
+) else (
+    set DO_BUILD=0
 )
-for /f "tokens=3" %%v in ('go version') do set GO_VER=%%v
-echo [OK] Go %GO_VER% found.
 echo.
 
-:: Build
-echo [1/3] Building...
-cd /d "%~dp0"
-go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .
-if errorlevel 1 (
-    echo [ERROR] Build failed.
-    pause
-    exit /b 1
+if "!DO_BUILD!"=="1" (
+    :: Check Go
+    where go >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Go not found. Install from https://go.dev/dl/
+        pause
+        exit /b 1
+    )
+    for /f "tokens=3" %%v in ('go version') do set GO_VER=%%v
+    echo [OK] Go !GO_VER! found.
+    echo.
+
+    :: Build
+    echo [1/3] Building from source...
+    cd /d "%~dp0"
+    go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .
+    if errorlevel 1 (
+        echo [ERROR] Build failed.
+        pause
+        exit /b 1
+    )
+    echo [OK] clawdial-daemon.exe created.
+) else (
+    :: Download pre-built binary
+    echo [1/3] Downloading latest release...
+    set DEST=%~dp0clawdial-daemon.exe
+    powershell -NoProfile -Command ^
+        "try { Invoke-WebRequest -Uri 'https://github.com/Moge800/Clawdial/releases/latest/download/clawdial-daemon.exe' -OutFile '!DEST!' -UseBasicParsing; Write-Host '[OK] Downloaded.' } catch { Write-Host ('[ERROR] Download failed: ' + $_.Exception.Message); exit 1 }"
+    if errorlevel 1 (
+        echo [ERROR] Download failed. Check your internet connection or download manually from:
+        echo         https://github.com/Moge800/Clawdial/releases/latest
+        pause
+        exit /b 1
+    )
 )
-echo [OK] clawdial-daemon.exe created.
 echo.
 
 :: Startup registration
