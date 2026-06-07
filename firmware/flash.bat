@@ -50,11 +50,41 @@ if not exist "!BIN!" (
 echo [OK] Found: !BIN!
 echo.
 
-:: COM port
-echo Connect M5Stack Dial via USB-C, then enter the COM port.
-echo (Check Device Manager ^> Ports if unsure)
-echo.
-set /p PORT="COM port (e.g. COM3): "
+:: Auto-detect COM port via WMI
+:: Matches CP210x / CH340 / CH341 / CH9102 / FTDI / generic USB Serial
+echo [INFO] Scanning for connected devices...
+set PORT_COUNT=0
+for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
+    "Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' -and ($_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs') } | ForEach-Object { if ($_.Name -match 'COM(\d+)') { $_.Name + '|COM' + $Matches[1] } } | Sort-Object"') do (
+    set /a PORT_COUNT+=1
+    for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
+        set PORT_LABEL_!PORT_COUNT!=%%A
+        set PORT_VAL_!PORT_COUNT!=%%B
+    )
+)
+
+if !PORT_COUNT!==0 (
+    echo [WARN] No device auto-detected.
+    echo        Connect M5Stack Dial via USB-C and check Device Manager ^> Ports.
+    echo.
+    set /p PORT="Enter COM port manually (e.g. COM3): "
+) else if !PORT_COUNT!==1 (
+    echo [OK] Auto-detected: !PORT_LABEL_1!
+    set PORT=!PORT_VAL_1!
+) else (
+    echo Found multiple devices:
+    for /l %%i in (1,1,!PORT_COUNT!) do (
+        echo   [%%i] !PORT_LABEL_%%i!
+    )
+    echo.
+    set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
+    if "!CHOICE!" GEQ "1" if "!CHOICE!" LEQ "!PORT_COUNT!" (
+        set PORT=!PORT_VAL_%CHOICE%!
+    ) else (
+        echo [WARN] Invalid choice — enter COM port manually.
+        set /p PORT="COM port (e.g. COM3): "
+    )
+)
 echo.
 
 :: Flash
@@ -67,7 +97,7 @@ if errorlevel 1 (
     echo.
     echo [ERROR] Flash failed.
     echo         - Check the COM port is correct
-    echo         - Try a different USB cable
+    echo         - Try a different USB cable or replug the device
     echo         - Hold the boot button while plugging in if auto-reset fails
     pause
     exit /b 1
