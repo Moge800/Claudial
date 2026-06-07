@@ -91,11 +91,25 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Trim whitespace and validate PORT (must match COMn / COMnn)
-:: トリムしてCOMポート形式か検証（スペースや不正文字による誤動作を防ぐ）
-for /f "tokens=* delims= " %%P in ("!PORT!") do set PORT=%%P
-echo !PORT! | findstr /i /r "^COM[0-9][0-9]*$" >nul 2>&1
-if errorlevel 1 (
+:: Trim leading/trailing spaces safely (no echo|pipe — avoids metacharacter injection)
+:: set "VAR=value" strips surrounding quotes and is safe for user input.
+for /f "tokens=* delims= " %%P in ("!PORT!") do set "PORT=%%P"
+
+:: Validate PORT using pure string operations — no pipeline involved.
+:: 1) Prefix must be COM (case-insensitive)  2) Suffix must be non-empty digits only.
+:: echo|findstr は !PORT! 展開でメタ文字が実行される危険があるため文字列操作で代替。
+set "PORT_PREFIX=!PORT:~0,3!"
+set "PORT_SUFFIX=!PORT:~3!"
+set "PORT_VALID=1"
+if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
+if "!PORT_SUFFIX!"==""           set PORT_VALID=0
+if "!PORT_VALID!"=="1" (
+    :: Remove all digits from the suffix; if anything remains it's an invalid character.
+    set "PORT_CHECK=!PORT_SUFFIX!"
+    for %%D in (0 1 2 3 4 5 6 7 8 9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
+    if not "!PORT_CHECK!"=="" set PORT_VALID=0
+)
+if "!PORT_VALID!"=="0" (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
     exit /b 1

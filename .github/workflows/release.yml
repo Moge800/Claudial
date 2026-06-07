@@ -42,7 +42,9 @@ jobs:
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v2
         with:
-          files: firmware/clawdial-firmware.bin
+          files: |
+            firmware/clawdial-firmware.bin
+            firmware/flash.bat
 
   # ---- Daemon (Windows / Go) ----
   build-daemon:
