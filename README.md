@@ -64,7 +64,7 @@ Clawdial/
 
 1. Download `clawdial-firmware.bin` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest) and place it next to `firmware/flash.bat`
 2. Connect M5Stack Dial via USB-C
-3. Run `firmware\flash.bat` — it auto-detects the COM port and flashes automatically (requires Python)
+3. Run `firmware\flash.bat` — it detects the COM port automatically if only one device is found, otherwise prompts you to select (requires Python)
 
 > **macOS / Linux:** `flash.bat` is Windows-only. Use Option B (PlatformIO) instead.
 

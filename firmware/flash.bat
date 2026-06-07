@@ -78,9 +78,14 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    if "!CHOICE!" GEQ "1" if "!CHOICE!" LEQ "!PORT_COUNT!" (
-        set PORT=!PORT_VAL_%CHOICE%!
-    ) else (
+    :: %CHOICE% はブロック内でparse時展開されて空になるため、
+    :: for /l の %%i（ループ変数）を使って遅延展開と組み合わせる。
+    :: Use for /l with %%i to avoid %CHOICE% being expanded at parse time inside the block.
+    set PORT=
+    for /l %%i in (1,1,!PORT_COUNT!) do (
+        if "%%i"=="!CHOICE!" set PORT=!PORT_VAL_%%i!
+    )
+    if "!PORT!"=="" (
         echo [WARN] Invalid choice — enter COM port manually.
         set /p PORT="COM port (e.g. COM3): "
     )
