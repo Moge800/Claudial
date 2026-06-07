@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: pio-${{ hashFiles('firmware/platformio.ini', 'firmware/src/**', 'firmware/lib/**') }}
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
           restore-keys: pio-
 
       - name: Install PlatformIO and esptool
