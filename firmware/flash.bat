@@ -52,7 +52,7 @@ echo.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { $_.Name + '|COM' + $Matches[1] } } | Sort-Object"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { ($_.Name + '|COM' + $Matches[1]).TrimEnd() } } | Sort-Object"') do (
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
         set PORT_LABEL_!PORT_COUNT!=%%A
