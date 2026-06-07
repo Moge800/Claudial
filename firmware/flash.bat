@@ -52,11 +52,15 @@ echo.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { ($_.Name + '|COM' + $Matches[1]).TrimEnd() } } | Sort-Object"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { $_.Name + '|' + [int]$Matches[1] } } | Sort-Object"') do (
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
         set PORT_LABEL_!PORT_COUNT!=%%A
-        set PORT_VAL_!PORT_COUNT!=%%B
+        :: %%B is the raw COM number from PowerShell (e.g. "3" possibly with trailing CR).
+        :: set /a reads the value by for-variable substitution and converts it to a clean integer,
+        :: then we immediately reconstruct "COMn" so PORT_VAL never carries hidden characters.
+        set /a PORT_NUM_TMP=%%B 2>nul
+        set PORT_VAL_!PORT_COUNT!=COM!PORT_NUM_TMP!
     )
 )
 
@@ -94,23 +98,25 @@ if !PORT_COUNT!==0 (
 set "PORT=!PORT:"=!"
 set "PORT=!PORT: =!"
 
-:: Validate PORT and reconstruct it cleanly.
-:: When PORT comes from for/f command substitution (PowerShell output) it may carry a
-:: trailing CR (\r) because for/f strips \n but not \r from piped output.
-:: Using set /a to parse the numeric suffix tolerates hidden whitespace/CR and lets us
-:: rebuild PORT as a clean "COMn" string with no trailing garbage.
+:: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
+:: PORT_VAL entries are already clean "COMn" (reconstructed at capture time).
+:: For manually entered PORT (set /p), digit-strip catches arithmetic operators
+:: like '+' or '*' that set /a would silently evaluate to a wrong port number.
 set "PORT_PREFIX=!PORT:~0,3!"
 set "PORT_SUFFIX=!PORT:~3!"
-set "PORT_NUM=0"
-set /a PORT_NUM=PORT_SUFFIX 2>nul
-if /i not "!PORT_PREFIX!"=="COM" set PORT_NUM=0
-if !PORT_NUM! LEQ 0 (
+set "PORT_VALID=1"
+if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
+if "!PORT_SUFFIX!"==""           set PORT_VALID=0
+if "!PORT_VALID!"=="1" (
+    set "PORT_CHECK=!PORT_SUFFIX!"
+    for %%D in (0 1 2 3 4 5 6 7 8 9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
+    if not "!PORT_CHECK!"=="" set PORT_VALID=0
+)
+if "!PORT_VALID!"=="0" (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
     exit /b 1
 )
-:: Reconstruct PORT cleanly so no hidden characters reach esptool.
-set "PORT=COM!PORT_NUM!"
 echo.
 
 :: Flash
