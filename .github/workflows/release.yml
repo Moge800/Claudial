@@ -25,14 +25,14 @@ jobs:
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: python -m pip install platformio
 
       - name: Build firmware
         run: cd firmware && pio run
 
       - name: Merge bootloader + partitions + app into single binary
         run: |
-          pip install esptool
+          python -m pip install esptool
           python -m esptool --chip esp32s3 merge_bin \
             -o firmware/clawdial-firmware.bin \
             0x0    firmware/.pio/build/m5stack-stamps3/bootloader.bin \

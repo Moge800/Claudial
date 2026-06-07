@@ -49,6 +49,7 @@ Clawdial/
 
 | 項目 | 要件 |
 |------|------|
+| [Python 3](https://www.python.org/) | `flash.bat` でのファームウェア書き込み（PlatformIO を使う場合は不要） |
 | [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み（ビルド済みファームウェアを使う場合は不要） |
 | [Go 1.26+](https://go.dev/dl/) | デーモンのビルド（ビルド済みバイナリを使う場合は不要） |
 | [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
