@@ -28,7 +28,9 @@ jobs:
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
         with:
-          path: ~/.platformio
+          path: |
+            ~/.platformio
+            firmware/.pio/libdeps
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
           restore-keys: pio-
 
