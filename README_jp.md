@@ -50,7 +50,7 @@ Clawdial/
 | 項目 | 要件 |
 |------|------|
 | [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み |
-| [Go 1.26+](https://go.dev/dl/) | デーモンのビルド |
+| [Go 1.26+](https://go.dev/dl/) | デーモンのビルド（ビルド済みバイナリを使う場合は不要） |
 | [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
 | Bluetooth LE 5.0 対応アダプタ | PC 側 BLE 通信 |
 
@@ -82,24 +82,31 @@ Clawdial/
 
 **事前準備：** [Claude Code](https://claude.ai/code) をインストールし、`claude login` でログインしておいてください。
 
-インストールスクリプトを使う方法（推奨）：
+#### 方法A — ビルド済みバイナリをダウンロード（Go不要）
+
+[最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-daemon.exe` をダウンロードし、好きな場所に置いて実行するだけです。
+
+#### 方法B — インストールスクリプト（ダウンロードかビルドかを選択）
 
 ```
 # Windows: install.bat をダブルクリック、またはターミナルで実行
 daemon\install.bat
+```
 
+スクリプト起動時にダウンロードか自己ビルド（Go必要）かを選択できます。スタートアップ登録や認証チェックも行います。
+
+```
 # macOS / Linux（未テスト・近日対応予定）
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
 
-手動でビルドする場合：
+#### 方法C — 手動ビルド
 
 ```bash
 cd daemon
-go build -o clawdial-daemon .
-./clawdial-daemon        # Linux / macOS（未テスト）
-clawdial-daemon.exe      # Windows
+go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .   # Windows
+go build -o clawdial-daemon .                                  # macOS / Linux（未テスト）
 ```
 
 > **macOS / Linux:** ビルド・起動は可能ですが、動作未検証です。近日中にテスト予定です。
