@@ -2,8 +2,7 @@
 
 **[English README is here](README.md)**
 
-> インスパイア元: [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin)。
-> レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。
+> [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) by [@HermannBjorgvin](https://github.com/HermannBjorgvin) にインスパイアされています — レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。BLE UUID やその他の実装は独自のものです。
 
 M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
@@ -214,4 +213,4 @@ JSON ペイロード（daemon → device）:
 
 MIT — [LICENSE](LICENSE) 参照。
 
-[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています。レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。
+[Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) にインスパイアされています — レートリミットヘッダーのポーリング方式は同プロジェクトを参考にしています。BLE UUID やその他の実装は独自のものです。

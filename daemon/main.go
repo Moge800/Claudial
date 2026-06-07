@@ -348,6 +348,14 @@ func run(ctx context.Context, cfg config) error {
 			continue
 		}
 
+		// findDevice成功後でもキャンセル済みならConnectをスキップする。
+		// Connect は ctx 非対応のため、ここでガードしないとQuitが長引く。
+		// Guard against ctx cancellation that arrived after findDevice returned —
+		// Connect ignores ctx, so skipping it here keeps Quit responsive.
+		if ctx.Err() != nil {
+			return nil
+		}
+
 		// tinygo bluetooth の Connect/DiscoverServices はコンテキスト非対応のため、
 		// Quit 時はこれらの完了を待つ必要がある（通常数秒以内）。
 		// Connect/DiscoverServices do not support context cancellation in tinygo bluetooth;
@@ -431,6 +439,12 @@ func mustUUID(s string) bluetooth.UUID {
 }
 
 func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg config, cached **payload) error {
+	// Connect完了後にキャンセルが到着していた場合はDiscoverServices（非対応）の前に終了する。
+	// Exit before DiscoverServices (non-cancellable) if ctx was cancelled after Connect returned.
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	// WinRT では Connect 直後に discover が失敗することがある → 最大3回リトライ
 	// On WinRT, discovery can fail right after Connect → retry up to 3 times.
 	var svc []bluetooth.DeviceService
@@ -469,6 +483,10 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 
 	// 接続直後、前セッションの cached があればすぐ送って No data を解消
 	// Right after connecting, send the previous session's cached value to clear "No data".
+	// キャンセル後はBLE書き込みをスキップ / Skip BLE write if already cancelled.
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if *cached != nil {
 		(*cached).PI = int(cfg.pollInterval.Seconds())
 		(*cached).St = true // 再接続直後はまだフェッチ前 = 古い値 / not yet re-fetched = stale
