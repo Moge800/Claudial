@@ -73,6 +73,7 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
+    set /a CHOICE=CHOICE >nul 2>nul
     set "PORT="
     for /l %%i in (1,1,!PORT_COUNT!) do (
         if "%%i"=="!CHOICE!" set "PORT=!PORT_VAL_%%i!"
@@ -83,15 +84,33 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Normalize and validate PORT
+:: Normalize PORT
 set "PORT=%PORT:^"=%"
 set "PORT=%PORT: =%"
-echo(!PORT!| findstr /r /i "^COM[0-9][0-9]*$" >nul
-if errorlevel 1 (
-    echo [ERROR] "!PORT!" does not look like a valid COM port.
-    pause
-    exit /b 1
-)
+
+:: Validate PORT — pure string ops, no metacharacter injection risk
+set "PORT_PREFIX=!PORT:~0,3!"
+set "PORT_SUFFIX=!PORT:~3!"
+if /i not "!PORT_PREFIX!"=="COM" goto :invalid_port
+if "!PORT_SUFFIX!"=="" goto :invalid_port
+set "PORT_CHECK=!PORT_SUFFIX!"
+set "PORT_CHECK=!PORT_CHECK:0=!"
+set "PORT_CHECK=!PORT_CHECK:1=!"
+set "PORT_CHECK=!PORT_CHECK:2=!"
+set "PORT_CHECK=!PORT_CHECK:3=!"
+set "PORT_CHECK=!PORT_CHECK:4=!"
+set "PORT_CHECK=!PORT_CHECK:5=!"
+set "PORT_CHECK=!PORT_CHECK:6=!"
+set "PORT_CHECK=!PORT_CHECK:7=!"
+set "PORT_CHECK=!PORT_CHECK:8=!"
+set "PORT_CHECK=!PORT_CHECK:9=!"
+if not "!PORT_CHECK!"=="" goto :invalid_port
+goto :port_ok
+:invalid_port
+echo [ERROR] "!PORT!" does not look like a valid COM port.
+pause
+exit /b 1
+:port_ok
 echo.
 
 :: Flash
@@ -99,7 +118,7 @@ echo [INFO] Flashing to !PORT! at 921600 baud...
 echo        This takes about 30 seconds.
 echo.
 python -m esptool --chip esp32s3 --port "!PORT!" --baud 921600 ^
-    write-flash 0x0 "!BIN!"
+    write_flash 0x0 "!BIN!"
 if errorlevel 1 (
     echo.
     echo [ERROR] Flash failed.

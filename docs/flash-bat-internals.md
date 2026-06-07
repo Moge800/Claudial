@@ -12,9 +12,12 @@
 
 ---
 
-## `set /a CHOICE=CHOICE` を使わない理由
+## `set /a CHOICE=CHOICE >nul 2>nul` — 入力サニタイズ
 
-`set /a` が一部環境で「指定されたドライブが見つかりません」を stdout に出力する現象を確認。`for /l %%i` との文字列比較だけで正常動作するため削除した。
+ユーザー入力の `CHOICE` をそのまま `!CHOICE!` で展開すると、`&`・`|`・`;` などのメタキャラクタを含む入力が後続コマンドとして実行される危険がある。
+`set /a CHOICE=CHOICE` は入力を整数に変換するため安全に除去できる。
+
+一部環境で「指定されたドライブが見つかりません」を stdout に出力する現象があるため、必ず `>nul 2>nul` を付ける。
 
 ---
 
@@ -43,15 +46,27 @@ if "!PORT_VALID!"=="1" (
 
 ---
 
-## COM ポート検証に findstr を使う
+## COM ポート検証 — 純粋な文字列演算で行う理由
+
+`echo(!PORT!| findstr` は **使ってはいけない**。PORT に `|` や `&` が含まれると、cmd.exe がパイプより先にそれらを評価してしまい、任意コマンドが実行される。
+
+代わりに遅延展開の部分文字列演算で検証する：
 
 ```bat
-echo(!PORT!| findstr /r /i "^COM[0-9][0-9]*$" >nul
+set "PORT_PREFIX=!PORT:~0,3!"
+set "PORT_SUFFIX=!PORT:~3!"
+if /i not "!PORT_PREFIX!"=="COM" goto :invalid_port
+if "!PORT_SUFFIX!"=="" goto :invalid_port
+set "PORT_CHECK=!PORT_SUFFIX!"
+set "PORT_CHECK=!PORT_CHECK:0=!"
+...
+set "PORT_CHECK=!PORT_CHECK:9=!"
+if not "!PORT_CHECK!"=="" goto :invalid_port
 ```
 
-- `echo(` — 末尾スペースなしで出力するイディオム
-- `$` アンカー — findstr はパイプ入力の CRLF を正しく処理し `\r` を行末とみなさないため機能する
-- `^COM[0-9][0-9]*$` — `COM3ABC` 等を拒否し `COM3` / `COM12` を通過させる
+1. 先頭 3 文字が `COM`（大文字小文字不問）であることを確認
+2. 残りの suffix が空でないことを確認
+3. suffix から 0〜9 をすべて除去し、残りが空なら純粋な数字列
 
 ---
 
