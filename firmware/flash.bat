@@ -91,10 +91,12 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Normalize PORT: strip surrounding quotes and all spaces (handles leading, trailing, embedded).
-:: COM port names never contain spaces, so this is safe and simpler than a partial trim.
-set "PORT=!PORT:"=!"
-set "PORT=!PORT: =!"
+:: Normalize PORT: strip surrounding quotes and all spaces.
+:: Use %VAR:"=% syntax (percent-expansion) instead of !VAR:"=! (delayed-expansion)
+:: because cmd.exe quote-pairs the outer " before evaluating the ! token, which would
+:: close the set argument at the inner " and corrupt PORT.
+set PORT=%PORT:"=%
+set PORT=%PORT: =%
 
 :: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
 :: PORT_VAL entries are already clean "COMn" (reconstructed at capture time).
