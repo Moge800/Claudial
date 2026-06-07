@@ -46,15 +46,20 @@ if not exist "!BIN!" (
 echo [OK] Found: !BIN!
 echo.
 
-:: Auto-detect COM port via registry.
-:: HKLM\HARDWARE\DEVICEMAP\SERIALCOMM lists every active COM port as a REG_SZ value
-:: whose data is the port name (e.g. "COM3").  reg query output is plain ASCII with no
-:: CR/encoding issues -- no PowerShell, no Shift-JIS, no hidden-character problems.
+:: Auto-detect COM port via registry + temp file.
+:: HKLM\HARDWARE\DEVICEMAP\SERIALCOMM lists every active COM port as a REG_SZ value.
+:: Piping reg query into "for /f" still leaves \r in tokens (cmd pipe text mode).
+:: Writing to a temp file first and reading with "for /f usebackq" strips CRLF correctly.
 echo [INFO] Scanning for connected devices...
+set "CWPORTS_TMP=%TEMP%\cwports_%RANDOM%_%RANDOM%.tmp"
+reg query "HKLM\HARDWARE\DEVICEMAP\SERIALCOMM" 2>nul | findstr "REG_SZ" > "!CWPORTS_TMP!"
 set PORT_COUNT=0
-for /f "tokens=3" %%P in ('reg query "HKLM\HARDWARE\DEVICEMAP\SERIALCOMM" 2^>nul ^| findstr "REG_SZ"') do (
-    set /a PORT_COUNT+=1
-    set "PORT_VAL_!PORT_COUNT!=%%P"
+if exist "!CWPORTS_TMP!" (
+    for /f "usebackq tokens=3" %%P in ("!CWPORTS_TMP!") do (
+        set /a PORT_COUNT+=1
+        set "PORT_VAL_!PORT_COUNT!=%%P"
+    )
+    del "!CWPORTS_TMP!" 2>nul
 )
 
 if !PORT_COUNT!==0 (
