@@ -33,7 +33,7 @@ jobs:
           restore-keys: pio-
 
       - name: Install PlatformIO and esptool
-        run: python -m pip install platformio esptool
+        run: python -m pip install -r firmware/requirements.txt
 
       - name: Build firmware
         run: cd firmware && python -m platformio run
