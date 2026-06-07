@@ -73,7 +73,6 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    set /a CHOICE=CHOICE >nul 2>nul
     set "PORT="
     for /l %%i in (1,1,!PORT_COUNT!) do (
         if "%%i"=="!CHOICE!" set "PORT=!PORT_VAL_%%i!"
@@ -118,7 +117,7 @@ echo [INFO] Flashing to !PORT! at 921600 baud...
 echo        This takes about 30 seconds.
 echo.
 python -m esptool --chip esp32s3 --port "!PORT!" --baud 921600 ^
-    write_flash 0x0 "!BIN!"
+    write-flash 0x0 "!BIN!"
 if errorlevel 1 (
     echo.
     echo [ERROR] Flash failed.
