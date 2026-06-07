@@ -77,13 +77,12 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    :: Normalize to a plain integer without expanding user input into the command line.
-    :: set /a reads CHOICE by name so metacharacters in the value are never shell-expanded.
-    set /a CHOICE=CHOICE 2>nul
-    :: for /l with %%i avoids %CHOICE% parse-time expansion inside a block.
-    set PORT=
+    :: for /l %%i avoids %CHOICE% parse-time expansion inside a block.
+    :: String comparison with %%i is sufficient — set /a is not needed and
+    :: was observed to emit "指定されたドライブが見つかりません" on some systems.
+    set "PORT="
     for /l %%i in (1,1,!PORT_COUNT!) do (
-        if "%%i"=="!CHOICE!" set PORT=!PORT_VAL_%%i!
+        if "%%i"=="!CHOICE!" set "PORT=!PORT_VAL_%%i!"
     )
     if "!PORT!"=="" (
         echo [WARN] Invalid choice - enter COM port manually.
