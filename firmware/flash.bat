@@ -49,6 +49,12 @@ echo.
 :: Auto-detect COM port via WMI.
 :: First try devices matching known USB-serial chips; if none found, list ALL COM ports
 :: so the user can pick without needing to know the chip name.
+:: CR note: for /f strips \n but keeps \r from piped PowerShell output, so %%B (the port
+:: number token) ends with CR.  "set PORT_VAL_N=COM%%B" exploits this: cmd.exe treats the
+:: CR as a command terminator, so it executes "set PORT_VAL_N=COM3" and stops -- the
+:: variable stores a clean "COMn" with no hidden characters.  Avoid "set /a VAR=%%B":
+:: that also splits at the CR but leaves the bare " 2>nul" as a standalone command, which
+:: generates a spurious "The specified drive was not found" error for every device found.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
@@ -56,11 +62,7 @@ for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
         set PORT_LABEL_!PORT_COUNT!=%%A
-        :: %%B is the raw COM number from PowerShell (e.g. "3" possibly with trailing CR).
-        :: set /a reads the value by for-variable substitution and converts it to a clean integer,
-        :: then we immediately reconstruct "COMn" so PORT_VAL never carries hidden characters.
-        set /a PORT_NUM_TMP=%%B 2>nul
-        set PORT_VAL_!PORT_COUNT!=COM!PORT_NUM_TMP!
+        set PORT_VAL_!PORT_COUNT!=COM%%B
     )
 )
 
