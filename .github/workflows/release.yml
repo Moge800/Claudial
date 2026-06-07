@@ -1,0 +1,67 @@
+name: Release
+
+# GitHubでリリースを作成したときに firmware.bin と daemon.exe を自動ビルドして添付する。
+# Automatically build and attach firmware.bin and daemon.exe when a GitHub Release is created.
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write  # softprops/action-gh-release がリリースにファイルを添付するために必要
+                   # Required for softprops/action-gh-release to upload release assets.
+
+jobs:
+  # ---- Firmware (ESP32-S3 / PlatformIO) ----
+  build-firmware:
+    name: Build firmware (ESP32-S3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: cd firmware && pio run
+
+      - name: Merge bootloader + partitions + app into single binary
+        run: |
+          pip install esptool
+          python -m esptool --chip esp32s3 merge_bin \
+            -o firmware/clawdial-firmware.bin \
+            0x0    firmware/.pio/build/m5stack-stamps3/bootloader.bin \
+            0x8000 firmware/.pio/build/m5stack-stamps3/partitions.bin \
+            0x10000 firmware/.pio/build/m5stack-stamps3/firmware.bin
+
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            firmware/clawdial-firmware.bin
+            firmware/flash.bat
+
+  # ---- Daemon (Windows / Go) ----
+  build-daemon:
+    name: Build daemon (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: daemon/go.mod
+
+      - name: Build daemon
+        run: cd daemon && go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .
+
+      - name: Upload daemon to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: daemon/clawdial-daemon.exe
