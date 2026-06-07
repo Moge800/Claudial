@@ -394,10 +394,14 @@ func run(ctx context.Context, cfg config) error {
 			if errors.Is(err, errTokenExpired) {
 				// 401 は再接続してもすぐ失敗するため、60秒待ってからリトライ。
 				// 401 will fail again immediately — wait 60s before reconnecting.
+				// time.After はキャンセル時にタイマーが残るため NewTimer を使う。
+				// Use NewTimer so we can stop it on cancel, avoiding timer leaks.
 				log.Printf("Token expired. Waiting 60s before retry — run 'claude login' to refresh.")
+				t401 := time.NewTimer(60 * time.Second)
 				select {
-				case <-time.After(60 * time.Second):
+				case <-t401.C:
 				case <-ctx.Done():
+					t401.Stop()
 					return nil
 				}
 			} else {
