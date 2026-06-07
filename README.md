@@ -60,11 +60,13 @@ Clawdial/
 
 ### Firmware
 
-#### Option A — Flash pre-built binary (no PlatformIO required)
+#### Option A — Flash pre-built binary — Windows only (no PlatformIO required)
 
 1. Download `clawdial-firmware.bin` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest) and place it next to `firmware/flash.bat`
 2. Connect M5Stack Dial via USB-C
-3. Run `firmware\flash.bat` and enter the COM port when prompted (requires Python)
+3. Run `firmware\flash.bat` — it auto-detects the COM port and flashes automatically (requires Python)
+
+> **macOS / Linux:** `flash.bat` is Windows-only. Use Option B (PlatformIO) instead.
 
 > **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
 

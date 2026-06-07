@@ -6,6 +6,10 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write  # softprops/action-gh-release がリリースにファイルを添付するために必要
+                   # Required for softprops/action-gh-release to upload release assets.
+
 jobs:
   # ---- Firmware (ESP32-S3 / PlatformIO) ----
   build-firmware:

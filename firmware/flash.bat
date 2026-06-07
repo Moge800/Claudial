@@ -85,13 +85,23 @@ if !PORT_COUNT!==0 (
         set /p PORT="COM port (e.g. COM3): "
     )
 )
+
+:: Trim whitespace and validate PORT (must match COMn / COMnn)
+:: トリムしてCOMポート形式か検証（スペースや不正文字による誤動作を防ぐ）
+for /f "tokens=* delims= " %%P in ("!PORT!") do set PORT=%%P
+echo !PORT! | findstr /i /r "^COM[0-9][0-9]*$" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] "!PORT!" does not look like a valid COM port.
+    pause
+    exit /b 1
+)
 echo.
 
 :: Flash
 echo [INFO] Flashing to !PORT! at 921600 baud...
 echo        This takes about 30 seconds.
 echo.
-python -m esptool --chip esp32s3 --port !PORT! --baud 921600 ^
+python -m esptool --chip esp32s3 --port "!PORT!" --baud 921600 ^
     write_flash 0x0 "!BIN!"
 if errorlevel 1 (
     echo.

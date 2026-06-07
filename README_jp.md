@@ -60,11 +60,13 @@ Clawdial/
 
 ### ファームウェア
 
-#### 方法A — ビルド済みファームウェアを書き込む（PlatformIO不要）
+#### 方法A — ビルド済みファームウェアを書き込む — Windows のみ（PlatformIO不要）
 
 1. [最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-firmware.bin` をダウンロードして `firmware/flash.bat` と同じフォルダに置く
 2. M5Stack Dial を USB-C で PC に接続
-3. `firmware\flash.bat` を実行してCOMポートを入力（Python が必要）
+3. `firmware\flash.bat` を実行 — COMポートを自動検出して書き込みます（Python が必要）
+
+> **macOS / Linux:** `flash.bat` は Windows 専用です。方法B（PlatformIO）を使用してください。
 
 > **ポートが見つからない場合**： Windows では [CP210x USB ドライバ](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) が必要なことがあります。インストール後、ケーブルを差し直してください。
 
