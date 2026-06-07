@@ -27,11 +27,7 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 | 項目 | 内容 |
 |------|------|
-| ボード | M5Stack Dial v1.1 |
-| MCU | ESP32-S3（M5StampS3） |
-| 画面 | 1.28インチ 丸型IPS LCD 240×240 |
-| 入力 | ロータリーエンコーダ + タッチ |
-| 接続 | BLE 5.0 |
+| [M5Stack Dial v1.1](https://docs.m5stack.com/en/core/M5Dial) | 1.28インチ 丸型IPS LCD 240×240、ロータリーエンコーダ + タッチ、ESP32-S3内蔵、BLE 5.0 |
 
 ---
 

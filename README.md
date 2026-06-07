@@ -27,11 +27,7 @@ With the stand, long-press the touch to toggle orientation — the default is "U
 
 | Item | Details |
 |------|---------|
-| Board | M5Stack Dial v1.1 |
-| MCU | ESP32-S3 (M5StampS3) |
-| Display | 1.28" Round IPS LCD 240×240 |
-| Input | Rotary encoder + touch |
-| Connectivity | BLE 5.0 |
+| [M5Stack Dial v1.1](https://docs.m5stack.com/en/core/M5Dial) | 1.28" Round IPS LCD 240×240, rotary encoder + touch, ESP32-S3 built-in, BLE 5.0 |
 
 ---
 
