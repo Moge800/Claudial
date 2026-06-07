@@ -75,8 +75,8 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    :: Take only the first character so any trailing CR/space from set /p is ignored.
-    set "CHOICE=!CHOICE:~0,1!"
+    :: Normalize to a plain integer (handles trailing CR/spaces, supports 10+ devices).
+    set /a CHOICE=!CHOICE! 2>nul
     :: for /l with %%i avoids %CHOICE% parse-time expansion inside a block.
     set PORT=
     for /l %%i in (1,1,!PORT_COUNT!) do (
@@ -87,6 +87,10 @@ if !PORT_COUNT!==0 (
         set /p PORT="COM port (e.g. COM3): "
     )
 )
+
+:: Normalize PORT: strip surrounding quotes the user may have typed, then leading/trailing spaces.
+set "PORT=!PORT:"=!"
+for /f "tokens=* delims= " %%P in ("!PORT!") do set "PORT=%%P"
 
 :: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
 :: Pure string operations - no pipeline, no injection risk from user input.
