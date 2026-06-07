@@ -102,7 +102,7 @@ set "PORT=!PORT: =!"
 set "PORT_PREFIX=!PORT:~0,3!"
 set "PORT_SUFFIX=!PORT:~3!"
 set "PORT_NUM=0"
-set /a PORT_NUM=!PORT_SUFFIX! 2>nul
+set /a PORT_NUM=PORT_SUFFIX 2>nul
 if /i not "!PORT_PREFIX!"=="COM" set PORT_NUM=0
 if !PORT_NUM! LEQ 0 (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
@@ -131,6 +131,6 @@ if errorlevel 1 (
 
 echo.
 echo ========================================
-echo  Done! Unplug and replug to reboot.
+echo  Done^! Unplug and replug to reboot.
 echo ========================================
 pause
