@@ -88,28 +88,26 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Normalize PORT: strip surrounding quotes the user may have typed, then leading/trailing spaces.
+:: Normalize PORT: strip surrounding quotes the user may have typed.
 set "PORT=!PORT:"=!"
-for /f "tokens=* delims= " %%P in ("!PORT!") do set "PORT=%%P"
 
-:: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
-:: Pure string operations - no pipeline, no injection risk from user input.
+:: Validate PORT and reconstruct it cleanly.
+:: When PORT comes from for/f command substitution (PowerShell output) it may carry a
+:: trailing CR (\r) because for/f strips \n but not \r from piped output.
+:: Using set /a to parse the numeric suffix tolerates hidden whitespace/CR and lets us
+:: rebuild PORT as a clean "COMn" string with no trailing garbage.
 set "PORT_PREFIX=!PORT:~0,3!"
 set "PORT_SUFFIX=!PORT:~3!"
-set "PORT_VALID=1"
-if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
-if "!PORT_SUFFIX!"==""           set PORT_VALID=0
-if "!PORT_VALID!"=="1" (
-    :: Strip all digit characters; if anything remains the suffix is invalid.
-    set "PORT_CHECK=!PORT_SUFFIX!"
-    for %%D in (0 1 2 3 4 5 6 7 8 9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
-    if not "!PORT_CHECK!"=="" set PORT_VALID=0
-)
-if "!PORT_VALID!"=="0" (
+set "PORT_NUM=0"
+set /a PORT_NUM=!PORT_SUFFIX! 2>nul
+if /i not "!PORT_PREFIX!"=="COM" set PORT_NUM=0
+if !PORT_NUM! LEQ 0 (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
     pause
     exit /b 1
 )
+:: Reconstruct PORT cleanly so no hidden characters reach esptool.
+set "PORT=COM!PORT_NUM!"
 echo.
 
 :: Flash
