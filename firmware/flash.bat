@@ -75,8 +75,9 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    :: Normalize to a plain integer (handles trailing CR/spaces, supports 10+ devices).
-    set /a CHOICE=!CHOICE! 2>nul
+    :: Normalize to a plain integer without expanding user input into the command line.
+    :: set /a reads CHOICE by name so metacharacters in the value are never shell-expanded.
+    set /a CHOICE=CHOICE 2>nul
     :: for /l with %%i avoids %CHOICE% parse-time expansion inside a block.
     set PORT=
     for /l %%i in (1,1,!PORT_COUNT!) do (
@@ -88,8 +89,10 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Normalize PORT: strip surrounding quotes the user may have typed.
+:: Normalize PORT: strip surrounding quotes and all spaces (handles leading, trailing, embedded).
+:: COM port names never contain spaces, so this is safe and simpler than a partial trim.
 set "PORT=!PORT:"=!"
+set "PORT=!PORT: =!"
 
 :: Validate PORT and reconstruct it cleanly.
 :: When PORT comes from for/f command substitution (PowerShell output) it may carry a
