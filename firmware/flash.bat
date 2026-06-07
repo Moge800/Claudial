@@ -64,8 +64,7 @@ if !PORT_COUNT!==0 (
     echo [WARN] No COM port found at all.
     echo        Connect M5Stack Dial via USB-C and check Device Manager ^> Ports.
     echo.
-    :: Use PowerShell Read-Host so the returned string is clean (no trailing CR).
-    for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''Enter COM port manually (e.g. COM3)''"') do set "PORT=%%P"
+    set /p PORT="Enter COM port manually (e.g. COM3): "
 ) else if !PORT_COUNT!==1 (
     echo [OK] Auto-detected: !PORT_LABEL_1!
     set PORT=!PORT_VAL_1!
@@ -75,29 +74,29 @@ if !PORT_COUNT!==0 (
         echo   [%%i] !PORT_LABEL_%%i!
     )
     echo.
-    :: Use PowerShell Read-Host for clean input (avoids trailing-CR from set /p).
-    for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''Select device number [1-!PORT_COUNT!]''"') do set "CHOICE=%%P"
-    :: for /l %%i avoids %CHOICE% parse-time expansion inside a block.
+    set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
+    :: Take only the first character so any trailing CR/space from set /p is ignored.
+    set "CHOICE=!CHOICE:~0,1!"
+    :: for /l with %%i avoids %CHOICE% parse-time expansion inside a block.
     set PORT=
     for /l %%i in (1,1,!PORT_COUNT!) do (
         if "%%i"=="!CHOICE!" set PORT=!PORT_VAL_%%i!
     )
     if "!PORT!"=="" (
-        echo [WARN] Invalid choice — enter COM port manually.
-        for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''COM port (e.g. COM3)''"') do set "PORT=%%P"
+        echo [WARN] Invalid choice - enter COM port manually.
+        set /p PORT="COM port (e.g. COM3): "
     )
 )
 
-:: Validate PORT using pure string operations — no pipeline involved.
-:: 1) Prefix must be COM (case-insensitive)  2) Suffix must be non-empty digits only.
-:: echo|findstr は !PORT! 展開でメタ文字が実行される危険があるため文字列操作で代替。
+:: Validate PORT: prefix must be COM (case-insensitive), suffix must be digits only.
+:: Pure string operations - no pipeline, no injection risk from user input.
 set "PORT_PREFIX=!PORT:~0,3!"
 set "PORT_SUFFIX=!PORT:~3!"
 set "PORT_VALID=1"
 if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
 if "!PORT_SUFFIX!"==""           set PORT_VALID=0
 if "!PORT_VALID!"=="1" (
-    :: Remove all digits from the suffix; if anything remains it's an invalid character.
+    :: Strip all digit characters; if anything remains the suffix is invalid.
     set "PORT_CHECK=!PORT_SUFFIX!"
     for %%D in (0 1 2 3 4 5 6 7 8 9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
     if not "!PORT_CHECK!"=="" set PORT_VALID=0
