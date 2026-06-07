@@ -34,7 +34,7 @@ if errorlevel 1 (
 )
 echo.
 
-:: Locate firmware binary (same directory as this script)
+:: Locate firmware binary
 set "BIN=%~dp0clawdial-firmware.bin"
 if not exist "!BIN!" (
     echo [ERROR] clawdial-firmware.bin not found next to this script.
@@ -46,10 +46,7 @@ if not exist "!BIN!" (
 echo [OK] Found: !BIN!
 echo.
 
-:: Auto-detect COM port via registry + temp file.
-:: HKLM\HARDWARE\DEVICEMAP\SERIALCOMM lists every active COM port as a REG_SZ value.
-:: Piping reg query into "for /f" still leaves \r in tokens (cmd pipe text mode).
-:: Writing to a temp file first and reading with "for /f usebackq" strips CRLF correctly.
+:: Auto-detect COM port
 echo [INFO] Scanning for connected devices...
 set "CWPORTS_TMP=%TEMP%\cwports_%RANDOM%_%RANDOM%.tmp"
 reg query "HKLM\HARDWARE\DEVICEMAP\SERIALCOMM" 2>nul | findstr "REG_SZ" > "!CWPORTS_TMP!"
@@ -63,8 +60,7 @@ if exist "!CWPORTS_TMP!" (
 )
 
 if !PORT_COUNT!==0 (
-    echo [WARN] No COM port found at all.
-    echo        Connect M5Stack Dial via USB-C and check Device Manager ^> Ports.
+    echo [WARN] No COM port found. Connect M5Stack Dial via USB-C and check Device Manager.
     echo.
     set /p PORT="Enter COM port manually (e.g. COM3): "
 ) else if !PORT_COUNT!==1 (
@@ -77,9 +73,6 @@ if !PORT_COUNT!==0 (
     )
     echo.
     set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    :: for /l %%i avoids %CHOICE% parse-time expansion inside a block.
-    :: String comparison with %%i is sufficient — set /a is not needed and
-    :: was observed to emit "指定されたドライブが見つかりません" on some systems.
     set "PORT="
     for /l %%i in (1,1,!PORT_COUNT!) do (
         if "%%i"=="!CHOICE!" set "PORT=!PORT_VAL_%%i!"
@@ -90,21 +83,9 @@ if !PORT_COUNT!==0 (
     )
 )
 
-:: Normalize PORT: strip surrounding quotes and all spaces.
-:: - Use %VAR% (percent-expansion) instead of !VAR! (delayed-expansion) because cmd.exe
-::   quote-pairs the outer " of  set "PORT=!PORT:"=!"  before evaluating the ! token,
-::   closing the set argument at the inner " and corrupting PORT.
-:: - Use set "PORT=..." (quoted form) to prevent metacharacters (&, |, >, <) in manually
-::   entered values from being executed before validation runs.
-:: - Use ^" inside the search pattern to represent a literal " without terminating the
-::   outer set " delimiter.
+:: Normalize and validate PORT
 set "PORT=%PORT:^"=%"
 set "PORT=%PORT: =%"
-
-:: Validate PORT: must be COM followed by one or more digits (case-insensitive).
-:: echo( avoids the trailing space that bare "echo" adds, keeping the pipe clean.
-:: Omit the $ anchor: piped echo output ends with \r\n and findstr on some Windows
-:: versions includes the \r in line content, causing $ to fail for valid input.
 echo(!PORT!| findstr /r /i "^COM[0-9][0-9]*$" >nul
 if errorlevel 1 (
     echo [ERROR] "!PORT!" does not look like a valid COM port.
