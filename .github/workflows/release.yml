@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: '3.x'
           cache: 'pip'
+          cache-dependency-path: firmware/requirements.txt
 
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
@@ -32,7 +33,7 @@ jobs:
           restore-keys: pio-
 
       - name: Install PlatformIO and esptool
-        run: python -m pip install platformio esptool
+        run: python -m pip install -r firmware/requirements.txt
 
       - name: Build firmware
         run: cd firmware && python -m platformio run
