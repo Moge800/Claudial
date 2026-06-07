@@ -110,10 +110,13 @@ set "PORT_SUFFIX=!PORT:~3!"
 set "PORT_VALID=1"
 if /i not "!PORT_PREFIX!"=="COM" set PORT_VALID=0
 if "!PORT_SUFFIX!"==""           set PORT_VALID=0
-:: Digit-strip must run at the top level (NOT inside an if block) because %%D inside
-:: a parenthesised block is percent-expanded to %D at parse time; at execution time
-:: the for-variable substitution no longer fires, leaving the search pattern literal
-:: and the strip silently failing.  Use sequential set commands instead.
+:: Digit-strip uses sequential set commands rather than a for-loop.
+:: Observed failure: placing  for %%D in (0..9) do set "PORT_CHECK=!PORT_CHECK:%%D=!"
+:: inside this if block caused CHECK to become "4=" instead of "" for suffix "3".
+:: Root cause: the digit-strip for loop has no enclosing for loop that owns %%D, so
+:: cmd.exe's block pre-expansion converts %%D to %D; the delayed substitution then
+:: uses the literal string "%D" as its search pattern instead of each digit, and the
+:: strip silently fails.  Sequential set commands are not affected by this issue.
 if "!PORT_VALID!"=="1" goto :do_digit_strip
 goto :digit_strip_done
 :do_digit_strip
