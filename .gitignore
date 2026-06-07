@@ -1,0 +1,100 @@
+# シークレット類
+.env
+*.env
+config.h
+*.credentials.json
+**/.credentials.json
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Python
+daemon/.venv/
+__pycache__/
+*.pyc
+
+# Go build artifacts
+daemon/*.exe
+daemon/*.exe~
+daemon/clawdial-daemon
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Linker files
+*.ilk
+
+# Debugger Files
+*.pdb
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+*.so.*
+
+
+# Fortran module files
+*.smod
+# *.mod は除外しない（Go の go.mod と衝突するため）
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build/
+Build/
+build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+compile_commands.json
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*.swp
+
+# vcpkg
+vcpkg_installed/
+
+# debug information files
+*.dwo
+
+# test output & cache
+Testing/
+.cache/
+
+.docs/
+
+# Claude Code / agent files (not shared)
+.claude/
+AGENTS.md
