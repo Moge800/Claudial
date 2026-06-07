@@ -46,12 +46,13 @@ if not exist "!BIN!" (
 echo [OK] Found: !BIN!
 echo.
 
-:: Auto-detect COM port via WMI
-:: Matches CP210x / CH340 / CH341 / CH9102 / FTDI / generic USB Serial
+:: Auto-detect COM port via WMI.
+:: First try devices matching known USB-serial chips; if none found, list ALL COM ports
+:: so the user can pick without needing to know the chip name.
 echo [INFO] Scanning for connected devices...
 set PORT_COUNT=0
 for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
-    "Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' -and ($_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs') } | ForEach-Object { if ($_.Name -match 'COM(\d+)') { $_.Name + '|COM' + $Matches[1] } } | Sort-Object"') do (
+    "$all = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -match 'COM\d+' }; $known = $all | Where-Object { $_.Name -match 'CP210|CH34|CH910|FTDI|USB Serial|Silicon Labs' }; $src = if ($known) { $known } else { $all }; $src | ForEach-Object { if ($_.Name -match 'COM(\d+)') { $_.Name + '|COM' + $Matches[1] } } | Sort-Object"') do (
     set /a PORT_COUNT+=1
     for /f "tokens=1,2 delims=|" %%A in ("%%L") do (
         set PORT_LABEL_!PORT_COUNT!=%%A
@@ -60,10 +61,11 @@ for /f "tokens=*" %%L in ('powershell -NoProfile -Command ^
 )
 
 if !PORT_COUNT!==0 (
-    echo [WARN] No device auto-detected.
+    echo [WARN] No COM port found at all.
     echo        Connect M5Stack Dial via USB-C and check Device Manager ^> Ports.
     echo.
-    set /p PORT="Enter COM port manually (e.g. COM3): "
+    :: Use PowerShell Read-Host so the returned string is clean (no trailing CR).
+    for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''Enter COM port manually (e.g. COM3)''"') do set "PORT=%%P"
 ) else if !PORT_COUNT!==1 (
     echo [OK] Auto-detected: !PORT_LABEL_1!
     set PORT=!PORT_VAL_1!
@@ -73,23 +75,18 @@ if !PORT_COUNT!==0 (
         echo   [%%i] !PORT_LABEL_%%i!
     )
     echo.
-    set /p CHOICE="Select device number [1-!PORT_COUNT!]: "
-    :: %CHOICE% はブロック内でparse時展開されて空になるため、
-    :: for /l の %%i（ループ変数）を使って遅延展開と組み合わせる。
-    :: Use for /l with %%i to avoid %CHOICE% being expanded at parse time inside the block.
+    :: Use PowerShell Read-Host for clean input (avoids trailing-CR from set /p).
+    for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''Select device number [1-!PORT_COUNT!]''"') do set "CHOICE=%%P"
+    :: for /l %%i avoids %CHOICE% parse-time expansion inside a block.
     set PORT=
     for /l %%i in (1,1,!PORT_COUNT!) do (
         if "%%i"=="!CHOICE!" set PORT=!PORT_VAL_%%i!
     )
     if "!PORT!"=="" (
         echo [WARN] Invalid choice — enter COM port manually.
-        set /p PORT="COM port (e.g. COM3): "
+        for /f "tokens=*" %%P in ('powershell -NoProfile -Command "Read-Host -Prompt ''COM port (e.g. COM3)''"') do set "PORT=%%P"
     )
 )
-
-:: Trim leading/trailing spaces safely (no echo|pipe — avoids metacharacter injection)
-:: set "VAR=value" strips surrounding quotes and is safe for user input.
-for /f "tokens=* delims= " %%P in ("!PORT!") do set "PORT=%%P"
 
 :: Validate PORT using pure string operations — no pipeline involved.
 :: 1) Prefix must be COM (case-insensitive)  2) Suffix must be non-empty digits only.
