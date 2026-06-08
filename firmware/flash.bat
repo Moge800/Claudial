@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 echo ========================================
-echo  Clawdial Firmware Flasher (Windows)
+echo  Claudial Firmware Flasher (Windows)
 echo ========================================
 echo.
 
@@ -35,11 +35,11 @@ if errorlevel 1 (
 echo.
 
 :: Locate firmware binary
-set "BIN=%~dp0clawdial-firmware.bin"
+set "BIN=%~dp0claudial-firmware.bin"
 if not exist "!BIN!" (
-    echo [ERROR] clawdial-firmware.bin not found next to this script.
+    echo [ERROR] claudial-firmware.bin not found next to this script.
     echo         Download it from:
-    echo         https://github.com/Moge800/Clawdial/releases/latest
+    echo         https://github.com/Moge800/Claudial/releases/latest
     pause
     exit /b 1
 )

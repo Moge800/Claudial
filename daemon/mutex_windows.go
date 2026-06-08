@@ -17,12 +17,12 @@ import (
 // Mutexはプロセス終了時にOSが自動解放するため明示的なCloseは不要。
 // The OS releases the mutex automatically on process exit — no explicit Close needed.
 func ensureSingleInstance() {
-	_, err := windows.CreateMutex(nil, false, windows.StringToUTF16Ptr("Local\\ClawdialDaemon"))
+	_, err := windows.CreateMutex(nil, false, windows.StringToUTF16Ptr("Local\\ClaudialDaemon"))
 	if err == windows.ERROR_ALREADY_EXISTS {
 		windows.MessageBox(
 			0,
-			windows.StringToUTF16Ptr("Clawdial is already running.\nCheck the system tray."),
-			windows.StringToUTF16Ptr("Clawdial"),
+			windows.StringToUTF16Ptr("Claudial is already running.\nCheck the system tray."),
+			windows.StringToUTF16Ptr("Claudial"),
 			windows.MB_OK|windows.MB_ICONINFORMATION,
 		)
 		os.Exit(0)

@@ -4,7 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// Clawdial 固有の BLE UUID（RFC 4122 v4）/ Clawdial-specific BLE UUIDs (RFC 4122 version 4)
+// Claudial 固有の BLE UUID（RFC 4122 v4）/ claudial-specific BLE UUIDs (RFC 4122 version 4)
 #define SVC_UUID  "29590732-a70c-4ea9-a739-000000000001"
 #define RX_UUID   "29590732-a70c-4ea9-a739-000000000002"
 #define TX_UUID   "29590732-a70c-4ea9-a739-000000000003"

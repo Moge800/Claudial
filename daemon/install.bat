@@ -2,12 +2,12 @@
 setlocal EnableDelayedExpansion
 
 echo ========================================
-echo  Clawdial Daemon Installer (Windows)
+echo  Claudial Daemon Installer (Windows)
 echo ========================================
 echo.
 
 :: Method selection
-echo How would you like to get clawdial-daemon.exe?
+echo How would you like to get claudial-daemon.exe?
 echo   [D] Download pre-built binary from GitHub Releases  (no Go required)
 echo   [B] Build from source                               (requires Go)
 echo.
@@ -34,22 +34,22 @@ if "!DO_BUILD!"=="1" (
     :: Build
     echo [1/3] Building from source...
     cd /d "%~dp0"
-    go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .
+    go build -ldflags "-H=windowsgui" -o claudial-daemon.exe .
     if errorlevel 1 (
         echo [ERROR] Build failed.
         pause
         exit /b 1
     )
-    echo [OK] clawdial-daemon.exe created.
+    echo [OK] claudial-daemon.exe created.
 ) else (
     :: Download pre-built binary
     echo [1/3] Downloading latest release...
-    set DEST=%~dp0clawdial-daemon.exe
+    set DEST=%~dp0claudial-daemon.exe
     powershell -NoProfile -Command ^
-        "try { Invoke-WebRequest -Uri 'https://github.com/Moge800/Clawdial/releases/latest/download/clawdial-daemon.exe' -OutFile '!DEST!' -UseBasicParsing; Write-Host '[OK] Downloaded.' } catch { Write-Host ('[ERROR] Download failed: ' + $_.Exception.Message); exit 1 }"
+        "try { Invoke-WebRequest -Uri 'https://github.com/Moge800/Claudial/releases/latest/download/claudial-daemon.exe' -OutFile '!DEST!' -UseBasicParsing; Write-Host '[OK] Downloaded.' } catch { Write-Host ('[ERROR] Download failed: ' + $_.Exception.Message); exit 1 }"
     if errorlevel 1 (
         echo [ERROR] Download failed. Check your internet connection or download manually from:
-        echo         https://github.com/Moge800/Clawdial/releases/latest
+        echo         https://github.com/Moge800/Claudial/releases/latest
         pause
         exit /b 1
     )
@@ -61,14 +61,14 @@ echo [2/3] Startup registration
 set /p STARTUP="Launch automatically on Windows startup? [y/N]: "
 if /i "!STARTUP!"=="y" (
     set STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
-    set SHORTCUT=!STARTUP_DIR!\Clawdial.lnk
-    set EXE=%~dp0clawdial-daemon.exe
+    set SHORTCUT=!STARTUP_DIR!\Claudial.lnk
+    set EXE=%~dp0claudial-daemon.exe
 
     powershell -NoProfile -Command ^
         "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('!SHORTCUT!');" ^
         "$s.TargetPath='!EXE!';" ^
         "$s.WorkingDirectory='%~dp0';" ^
-        "$s.Description='Clawdial daemon';" ^
+        "$s.Description='Claudial daemon';" ^
         "$s.Save()"
 
     if errorlevel 1 (
@@ -102,12 +102,12 @@ echo ========================================
 echo  Done!
 echo ========================================
 echo.
-set /p LAUNCH="Launch Clawdial now? [Y/n]: "
+set /p LAUNCH="Launch Claudial now? [Y/n]: "
 if /i not "!LAUNCH:~0,1!"=="n" (
-    start "" "%~dp0clawdial-daemon.exe"
-    echo [OK] Clawdial started.
+    start "" "%~dp0claudial-daemon.exe"
+    echo [OK] Claudial started.
 ) else (
-    echo [SKIP] Run clawdial-daemon.exe to start manually.
+    echo [SKIP] Run claudial-daemon.exe to start manually.
 )
 echo.
 pause

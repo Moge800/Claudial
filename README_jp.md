@@ -1,13 +1,15 @@
-# Clawdial
+# Claudial
 
 **[English README is here](README.md)**
+
+> **注:** このプロジェクトは以前 *Clawdial* という名前でした。Open Claw 系ツールと混同されやすいため改名しました。
 
 M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
 デスクに置くだけ。セッション・週間の API 使用率をリアルタイム表示し、閾値に近づくとダブルビープ、到達すると継続的な警告音で知らせます。ダイヤルを回して閾値をその場で調整できます。
 
 <table role="presentation"><tr>
-<td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
+<td><img src="assets/device.jpg" width="180" alt="Claudial on desk"></td>
 <td><img src="assets/alert_demo.gif" width="180" alt="警告デモ（赤フラッシュ＋ビープ）"></td>
 </tr></table>
 
@@ -34,7 +36,7 @@ M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 ## 構成
 
 ```
-Clawdial/
+Claudial/
 ├── firmware/   PlatformIO プロジェクト（M5Stack Dial 用ファームウェア）
 └── daemon/     PC 側デーモン（Go、Windows / macOS / Linux）
 ```
@@ -59,7 +61,7 @@ Clawdial/
 
 #### 方法A — ビルド済みファームウェアを書き込む — Windows のみ（PlatformIO不要）
 
-1. [最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-firmware.bin` と `flash.bat` の**両方**を同じフォルダにダウンロード
+1. [最新リリース](https://github.com/Moge800/Claudial/releases/latest) から `claudial-firmware.bin` と `flash.bat` の**両方**を同じフォルダにダウンロード
 2. M5Stack Dial を USB-C で PC に接続
 3. `flash.bat` を実行 — 1台だけ検出できた場合はCOMポートを自動選択、複数または未検出の場合は番号選択または手動入力を促します（Python が必要）
 
@@ -86,7 +88,7 @@ Clawdial/
 
 #### 方法A — ビルド済みバイナリをダウンロード（Go不要）
 
-[最新リリース](https://github.com/Moge800/Clawdial/releases/latest) から `clawdial-daemon.exe` をダウンロードし、好きな場所に置いて実行するだけです。
+[最新リリース](https://github.com/Moge800/Claudial/releases/latest) から `claudial-daemon.exe` をダウンロードし、好きな場所に置いて実行するだけです。
 
 #### 方法B — インストールスクリプト（ダウンロードかビルドかを選択）
 
@@ -107,8 +109,8 @@ chmod +x daemon/install.sh
 
 ```bash
 cd daemon
-go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .   # Windows
-go build -o clawdial-daemon .                                  # macOS / Linux（未テスト）
+go build -ldflags "-H=windowsgui" -o claudial-daemon.exe .   # Windows
+go build -o claudial-daemon .                                  # macOS / Linux（未テスト）
 ```
 
 > **macOS / Linux:** ビルド・起動は可能ですが、動作未検証です。近日中にテスト予定です。
@@ -124,8 +126,8 @@ go build -o clawdial-daemon .                                  # macOS / Linux�
 **アンインストール（Windows）**
 
 1. トレイアイコンを右クリック → **Quit**
-2. インストールフォルダの `clawdial-daemon.exe` と `daemon.log` を削除
-3. スタートアップショートカットを削除：エクスプローラーで `shell:startup` を開き `Clawdial.lnk` を削除
+2. インストールフォルダの `claudial-daemon.exe` と `daemon.log` を削除
+3. スタートアップショートカットを削除：エクスプローラーで `shell:startup` を開き `Claudial.lnk` を削除
 
 > **認証の有効期限について**
 > Claude Code の認証トークンは数時間で失効します。デーモンが 401 エラーを出した場合は `claude login` を再実行してください。
@@ -135,9 +137,9 @@ go build -o clawdial-daemon .                                  # macOS / Linux�
 `daemon/.env.example` を `daemon/.env` にコピーして編集してください。
 
 ```env
-CLAWDIAL_DEVICE_NAME=Clawdial    # BLE デバイス名（ファームウェアと合わせる）
-CLAWDIAL_POLL_INTERVAL=60        # ポーリング間隔（秒）
-CLAWDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
+CLAUDIAL_DEVICE_NAME=Claudial    # BLE デバイス名（ファームウェアと合わせる）
+CLAUDIAL_POLL_INTERVAL=60        # ポーリング間隔（秒）
+CLAUDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
 ```
 
 > **設定の変更はデーモン再起動後に反映されます。** Windows では Quit → 再起動してください（システムトレイの **Open Config** のツールチップにも記載されています）。
@@ -190,7 +192,7 @@ CLAWDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
 
 ## BLE プロトコル
 
-Clawdial 固有の UUID を使用しています（RFC 4122 v4、ベース `29590732-a70c-4ea9-a739-…`）。
+Claudial 固有の UUID を使用しています（RFC 4122 v4、ベース `29590732-a70c-4ea9-a739-…`）。
 
 | 項目 | UUID |
 |------|------|

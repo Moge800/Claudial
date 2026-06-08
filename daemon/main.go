@@ -1,4 +1,4 @@
-// Clawdial daemon — Claude Code usage monitor via BLE.
+// Claudial daemon — Claude Code usage monitor via BLE.
 //
 // Usage data is read from rate-limit headers returned by the Anthropic API,
 // following the approach used by Clawdmeter (github.com/HermannBjorgvin/Clawdmeter).
@@ -62,19 +62,19 @@ func loadConfig() config {
 	_ = godotenv.Load()
 
 	cfg := config{
-		deviceName:   "Clawdial",
+		deviceName:   "Claudial",
 		pollInterval: 60 * time.Second,
 		scanTimeout:  15 * time.Second,
 	}
-	if v := os.Getenv("CLAWDIAL_DEVICE_NAME"); v != "" {
+	if v := os.Getenv("CLAUDIAL_DEVICE_NAME"); v != "" {
 		cfg.deviceName = v
 	}
-	if v := os.Getenv("CLAWDIAL_POLL_INTERVAL"); v != "" {
+	if v := os.Getenv("CLAUDIAL_POLL_INTERVAL"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.pollInterval = time.Duration(n) * time.Second
 		}
 	}
-	if v := os.Getenv("CLAWDIAL_SCAN_TIMEOUT"); v != "" {
+	if v := os.Getenv("CLAUDIAL_SCAN_TIMEOUT"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.scanTimeout = time.Duration(n) * time.Second
 		}

@@ -2,7 +2,7 @@
 set -e
 
 echo "========================================"
-echo " Clawdial Daemon Installer"
+echo " Claudial Daemon Installer"
 echo "========================================"
 echo
 
@@ -57,17 +57,17 @@ fi
 # ビルド
 echo "[1/3] ビルド中..."
 cd "$(dirname "$0")"
-go build -o clawdial-daemon .
-echo "[OK] clawdial-daemon を生成しました。"
+go build -o claudial-daemon .
+echo "[OK] claudial-daemon を生成しました。"
 echo
 
 # スタートアップ登録
 echo "[2/3] 自動起動登録"
-DAEMON_PATH="$(pwd)/clawdial-daemon"
+DAEMON_PATH="$(pwd)/claudial-daemon"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS: launchd
-    PLIST="$HOME/Library/LaunchAgents/io.github.moge800.clawdial-daemon.plist"
+    PLIST="$HOME/Library/LaunchAgents/io.github.moge800.claudial-daemon.plist"
     read -rp "macOS 起動時に自動起動しますか？ [y/N]: " STARTUP
     if [[ "$STARTUP" =~ ^[Yy]$ ]]; then
         cat > "$PLIST" <<EOF
@@ -77,7 +77,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>io.github.moge800.clawdial-daemon</string>
+    <string>io.github.moge800.claudial-daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>${DAEMON_PATH}</string>
@@ -87,13 +87,13 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>${HOME}/.clawdial/daemon.log</string>
+    <string>${HOME}/.claudial/daemon.log</string>
     <key>StandardErrorPath</key>
-    <string>${HOME}/.clawdial/daemon.log</string>
+    <string>${HOME}/.claudial/daemon.log</string>
 </dict>
 </plist>
 EOF
-        mkdir -p "$HOME/.clawdial"
+        mkdir -p "$HOME/.Claudial"
         launchctl load "$PLIST"
         echo "[OK] launchd に登録しました: $PLIST"
     else
@@ -103,13 +103,13 @@ EOF
 elif command -v systemctl &>/dev/null; then
     # Linux: systemd (user)
     SERVICE_DIR="$HOME/.config/systemd/user"
-    SERVICE="$SERVICE_DIR/clawdial-daemon.service"
+    SERVICE="$SERVICE_DIR/claudial-daemon.service"
     read -rp "systemd ユーザーサービスとして自動起動しますか？ [y/N]: " STARTUP
     if [[ "$STARTUP" =~ ^[Yy]$ ]]; then
         mkdir -p "$SERVICE_DIR"
         cat > "$SERVICE" <<EOF
 [Unit]
-Description=Clawdial BLE Daemon
+Description=Claudial BLE Daemon
 After=network.target bluetooth.target
 
 [Service]
@@ -121,7 +121,7 @@ RestartSec=5
 WantedBy=default.target
 EOF
         systemctl --user daemon-reload
-        systemctl --user enable --now clawdial-daemon.service
+        systemctl --user enable --now claudial-daemon.service
         echo "[OK] systemd に登録しました: $SERVICE"
     else
         echo "[SKIP] 自動起動登録をスキップしました。"
@@ -145,5 +145,5 @@ echo
 
 echo "========================================"
 echo " インストール完了！"
-echo " 起動: ./clawdial-daemon"
+echo " 起動: ./claudial-daemon"
 echo "========================================"

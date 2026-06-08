@@ -1,7 +1,7 @@
 //go:build windows
 
 // tray.go — Windows システムトレイ UI
-// Windows system tray UI for Clawdial daemon.
+// Windows system tray UI for Claudial daemon.
 
 package main
 
@@ -30,12 +30,12 @@ func runWithTray(cfg config) {
 
 func onReady(cfg config) {
 	systray.SetIcon(iconData)
-	systray.SetTitle("Clawdial")
+	systray.SetTitle("Claudial")
 
 	mLog := systray.AddMenuItem("Open Log", "Open daemon.log in default editor")
 	mConfig := systray.AddMenuItem("Open Config", "Open .env in default editor (restart to apply changes)")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Quit", "Stop Clawdial daemon")
+	mQuit := systray.AddMenuItem("Quit", "Stop Claudial daemon")
 
 	// Quitで再接続ループをキャンセルできるようcontextを渡す。
 	// Pass a cancellable context so Quit stops the reconnect loop cleanly.
@@ -101,15 +101,15 @@ func openFile(path string) {
 // defaultEnvContent は.envが存在しない場合に書き込むデフォルト内容。
 // Keys must match what loadConfig() reads via os.Getenv.
 // defaultEnvContent is written to .env when the file does not exist.
-const defaultEnvContent = `# Clawdial daemon configuration
-# CLAWDIAL_DEVICE_NAME: BLE name of your M5Dial (set in firmware via long-press)
-CLAWDIAL_DEVICE_NAME=Clawdial
+const defaultEnvContent = `# Claudial daemon configuration
+# CLAUDIAL_DEVICE_NAME: BLE name of your M5Dial (set in firmware via long-press)
+CLAUDIAL_DEVICE_NAME=Claudial
 
-# CLAWDIAL_POLL_INTERVAL: how often to query Anthropic API, in whole seconds
-CLAWDIAL_POLL_INTERVAL=60
+# CLAUDIAL_POLL_INTERVAL: how often to query Anthropic API, in whole seconds
+CLAUDIAL_POLL_INTERVAL=60
 
-# CLAWDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt, in whole seconds
-CLAWDIAL_SCAN_TIMEOUT=15
+# CLAUDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt, in whole seconds
+CLAUDIAL_SCAN_TIMEOUT=15
 `
 
 // openOrCreateConfig は.envが存在しなければデフォルト内容で作成してから開く。

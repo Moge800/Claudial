@@ -1,13 +1,15 @@
-# Clawdial
+# Claudial
 
 **[日本語版 README はこちら](README_jp.md)**
+
+> **Note:** This project was previously named *Clawdial*. The name was changed to avoid confusion with tools from the Open Claw ecosystem.
 
 A **Claude Code usage monitor** running on M5Stack Dial (ESP32-S3).
 
 Just place it on your desk. Session and weekly API usage are displayed in real time — a double beep warns you as you approach your limit, and a continuous alert fires when you reach it. Rotate the dial to adjust the threshold on the fly.
 
 <table role="presentation"><tr>
-<td><img src="assets/device.jpg" width="180" alt="Clawdial on desk"></td>
+<td><img src="assets/device.jpg" width="180" alt="Claudial on desk"></td>
 <td><img src="assets/alert_demo.gif" width="180" alt="Alert demo (red flash + beep)"></td>
 </tr></table>
 
@@ -34,7 +36,7 @@ With the stand, long-press the touch to toggle orientation — the default is "U
 ## Repository Structure
 
 ```
-Clawdial/
+Claudial/
 ├── firmware/   PlatformIO project (M5Stack Dial firmware)
 └── daemon/     PC-side daemon (Go, Windows / macOS / Linux)
 ```
@@ -59,7 +61,7 @@ Clawdial/
 
 #### Option A — Flash pre-built binary — Windows only (no PlatformIO required)
 
-1. Download **both** `clawdial-firmware.bin` and `flash.bat` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest) into the same folder
+1. Download **both** `claudial-firmware.bin` and `flash.bat` from the [latest release](https://github.com/Moge800/Claudial/releases/latest) into the same folder
 2. Connect M5Stack Dial via USB-C
 3. Run `flash.bat` — it detects the COM port automatically if only one device is found, otherwise prompts you to select or enter it manually (requires Python)
 
@@ -86,7 +88,7 @@ After flashing, you can unplug the USB cable. Normal use is USB-C power (charger
 
 #### Option A — Download pre-built binary (no Go required)
 
-Download `clawdial-daemon.exe` from the [latest release](https://github.com/Moge800/Clawdial/releases/latest), place it anywhere you like, and run it. That's it.
+Download `claudial-daemon.exe` from the [latest release](https://github.com/Moge800/Claudial/releases/latest), place it anywhere you like, and run it. That's it.
 
 #### Option B — Install script (build or download, your choice)
 
@@ -107,8 +109,8 @@ chmod +x daemon/install.sh
 
 ```bash
 cd daemon
-go build -ldflags "-H=windowsgui" -o clawdial-daemon.exe .   # Windows
-go build -o clawdial-daemon .                                  # macOS / Linux (untested)
+go build -ldflags "-H=windowsgui" -o claudial-daemon.exe .   # Windows
+go build -o claudial-daemon .                                  # macOS / Linux (untested)
 ```
 
 > **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.
@@ -124,8 +126,8 @@ Use the startup registration option in `install.bat` / `install.sh` to launch it
 **Uninstall (Windows)**
 
 1. Right-click the tray icon → **Quit**
-2. Delete `clawdial-daemon.exe` and `daemon.log` from the install folder
-3. Delete the startup shortcut: open `shell:startup` in Explorer and remove `Clawdial.lnk`
+2. Delete `claudial-daemon.exe` and `daemon.log` from the install folder
+3. Delete the startup shortcut: open `shell:startup` in Explorer and remove `Claudial.lnk`
 
 > **Token expiry**
 > Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
@@ -135,9 +137,9 @@ Use the startup registration option in `install.bat` / `install.sh` to launch it
 Copy `daemon/.env.example` to `daemon/.env` and edit:
 
 ```env
-CLAWDIAL_DEVICE_NAME=Clawdial    # BLE device name (must match firmware)
-CLAWDIAL_POLL_INTERVAL=60        # Polling interval in seconds
-CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
+CLAUDIAL_DEVICE_NAME=Claudial    # BLE device name (must match firmware)
+CLAUDIAL_POLL_INTERVAL=60        # Polling interval in seconds
+CLAUDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 ```
 
 > **Config changes take effect on restart.** On Windows, use Quit → relaunch (or the systray **Open Config** tooltip is a reminder of this).
@@ -148,13 +150,13 @@ CLAWDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
 
 ### Setting Warning Limits
 
-The rotary dial is the core interaction — it lets you set the usage threshold at which Clawdial warns you, directly on the device with no app or config file needed.
+The rotary dial is the core interaction — it lets you set the usage threshold at which Claudial warns you, directly on the device with no app or config file needed.
 
 1. **Short-press** the touch screen to select which limit to edit — **Session** or **Week** (the active one is highlighted on the display)
 2. **Rotate the dial** to raise or lower the threshold **±1% per click**
 3. The limit is **saved to non-volatile storage ~1 second after you stop turning** — it persists across reboots and power cuts, no reflashing needed (avoid power-cycling immediately after adjusting)
 
-> **Example:** Set Session limit to 80% → Clawdial double-beeps when you hit 75%, then flashes red and beeps continuously at 80%.
+> **Example:** Set Session limit to 80% → Claudial double-beeps when you hit 75%, then flashes red and beeps continuously at 80%.
 
 ### Controls
 
@@ -190,7 +192,7 @@ Long-press the touch screen for 1 second to toggle between orientations. The dev
 
 ## BLE Protocol
 
-Uses Clawdial-specific UUIDs (RFC 4122 v4, base `29590732-a70c-4ea9-a739-…`).
+Uses claudial-specific UUIDs (RFC 4122 v4, base `29590732-a70c-4ea9-a739-…`).
 
 | Item | UUID |
 |------|------|

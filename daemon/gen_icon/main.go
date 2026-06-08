@@ -28,7 +28,7 @@ func main() {
 			dx := float64(x) - cx
 			dy := float64(y) - cy
 			if dx*dx+dy*dy <= r*r {
-				img.Set(x, y, color.NRGBA{0x00, 0xCC, 0x44, 0xFF}) // Clawdial green
+				img.Set(x, y, color.NRGBA{0x00, 0xCC, 0x44, 0xFF}) // Claudial green
 			}
 		}
 	}

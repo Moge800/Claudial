@@ -4,7 +4,7 @@
 static Preferences prefs;
 
 void storage_init() {
-    prefs.begin("clawdial", false);
+    prefs.begin("Claudial", false);
 }
 
 void storage_set_device_name(const char *name) {
@@ -12,7 +12,7 @@ void storage_set_device_name(const char *name) {
 }
 
 String storage_get_device_name() {
-    return prefs.getString("dev_name", "Clawdial");
+    return prefs.getString("dev_name", "Claudial");
 }
 
 void storage_set_rotation(uint8_t rotation) {
