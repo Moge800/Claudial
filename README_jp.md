@@ -2,7 +2,7 @@
 
 **[English README is here](README.md)**
 
-> **注:** このプロジェクトは以前 *Clawdial* という名前でした。Open Claw 系ツールと混同されやすいため改名しました。
+> **注:** *Clawdial* から *Claudial* に改名しました。OpenClaw エコシステムのツールとの混同を避けるためです。
 
 M5Stack Dial（ESP32-S3）上で動く **Claude Code 使用量モニター**。
 
