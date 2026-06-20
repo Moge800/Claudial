@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"time"
 
 	"github.com/getlantern/systray"
 )
@@ -43,10 +45,57 @@ func onReady(cfg config) {
 	done := make(chan struct{})
 
 	// daemonのメインループをgoroutineで実行 / Run daemon loop in background goroutine.
+	// tinygo-bluetooth は DiscoverServices の WinRT 呼び出しで panic することがある
+	// (status 2 Canceled の直後)。panic はプロセス全体を巻き込みトレイアイコンごと消すため、
+	// recover してループを再開する。
+	// tinygo-bluetooth can panic inside the DiscoverServices WinRT call (right after a
+	// status-2 Canceled). A panic kills the whole process and the tray icon with it, so
+	// recover it and restart the loop instead.
 	go func() {
 		defer close(done)
-		if err := run(ctx, cfg); err != nil {
-			log.Printf("daemon error: %v", err)
+
+		// BLEスタックは起動直後（shell:startup等）に未準備のことがあるので、
+		// 成功するまでEnableをリトライする。成功後は再呼び出ししない
+		// （Windowsは再Enableでエラーになる）。
+		// The BLE stack may not be ready right after boot (e.g. shell:startup), so retry
+		// Enable until it succeeds. It is never called again afterward (re-Enable errors on Windows).
+		for {
+			err := adapter.Enable()
+			if err == nil {
+				break
+			}
+			log.Printf("enable adapter: %v. Retrying in 5s...", err)
+			t := time.NewTimer(5 * time.Second)
+			select {
+			case <-t.C:
+			case <-ctx.Done():
+				t.Stop()
+				return
+			}
+		}
+
+		for ctx.Err() == nil {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("daemon panic recovered: %v\n%s", r, debug.Stack())
+					}
+				}()
+				if err := run(ctx, cfg); err != nil {
+					log.Printf("daemon error: %v", err)
+				}
+			}()
+			if ctx.Err() != nil {
+				return
+			}
+			log.Println("daemon loop exited; restarting in 5s")
+			t := time.NewTimer(5 * time.Second)
+			select {
+			case <-t.C:
+			case <-ctx.Done():
+				t.Stop()
+				return
+			}
 		}
 	}()
 
