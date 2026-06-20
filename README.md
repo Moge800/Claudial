@@ -116,7 +116,7 @@ go build -o claudial-daemon .                                  # macOS / Linux (
 > **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.
 
 > **Token usage**
-> The daemon fetches usage by making a minimal API call (`claude-haiku-4-5-20251001`, 8 input + 1 output tokens) every poll interval and reading the rate-limit headers from the response. At the default 60-second interval this costs roughly $0.000019/day — less than 0.003% of a Pro plan's daily budget.
+> The daemon fetches usage by making a minimal API call (`claude-haiku-4-5-20251001`, 8 input + 1 output tokens) every poll interval and reading the rate-limit headers from the response. At the default 60-second interval (1,440 calls/day) this costs roughly $0.019/day (~$0.6/month) — under 3% of a Pro plan's daily budget.
 
 The daemon must **stay running** while you use Claude Code.
 Use the startup registration option in `install.bat` / `install.sh` to launch it automatically on boot.
