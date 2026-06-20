@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"time"
 
 	"github.com/getlantern/systray"
 )
@@ -43,10 +45,34 @@ func onReady(cfg config) {
 	done := make(chan struct{})
 
 	// daemonのメインループをgoroutineで実行 / Run daemon loop in background goroutine.
+	// tinygo-bluetooth は DiscoverServices の WinRT 呼び出しで panic することがある
+	// (status 2 Canceled の直後)。panic はプロセス全体を巻き込みトレイアイコンごと消すため、
+	// recover してループを再開する。
+	// tinygo-bluetooth can panic inside the DiscoverServices WinRT call (right after a
+	// status-2 Canceled). A panic kills the whole process and the tray icon with it, so
+	// recover it and restart the loop instead.
 	go func() {
 		defer close(done)
-		if err := run(ctx, cfg); err != nil {
-			log.Printf("daemon error: %v", err)
+		for ctx.Err() == nil {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("daemon panic recovered: %v\n%s", r, debug.Stack())
+					}
+				}()
+				if err := run(ctx, cfg); err != nil {
+					log.Printf("daemon error: %v", err)
+				}
+			}()
+			if ctx.Err() != nil {
+				return
+			}
+			log.Println("daemon loop exited; restarting in 5s")
+			select {
+			case <-time.After(5 * time.Second):
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
