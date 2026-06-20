@@ -319,12 +319,10 @@ func run(ctx context.Context, cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
-	// BLEアダプターの有効化はプロセス起動時に一度だけ行う。
-	// Enable the BLE adapter once at startup — re-calling it on Windows causes an error.
-	// ponytail: 再開ループで再呼び出しされても致命にしない。既に有効化済みなら無害、
-	// アダプタ未接続ならScanが拾って5sリトライへ回るので、ここでbailしない。
-	// Don't bail on restart: re-Enable is harmless if already on, and a missing
-	// adapter is handled by the scan retry loop below.
+	// panic recover後の再開ループでも呼ばれるため致命にしない。
+	// アダプタ未接続ならScanが拾って5sリトライへ回る。
+	// Non-fatal: this runs again after panic recovery; a missing adapter
+	// is caught by the scan retry loop below.
 	if err := adapter.Enable(); err != nil {
 		log.Printf("enable adapter: %v (continuing — scan loop will retry)", err)
 	}
@@ -473,7 +471,7 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 		log.Printf("DiscoverServices attempt %d failed: %v", attempt, discErr)
 		// status 2 = WinRT AsyncStatus::Canceled — retrying causes a CGO crash.
 		// Return immediately and let the outer loop reconnect.
-		if discErr != nil && strings.Contains(discErr.Error(), "status 2") {
+		if discErr != nil && strings.HasSuffix(discErr.Error(), "status 2") {
 			return fmt.Errorf("discover service: canceled (status 2), reconnecting: %w", discErr)
 		}
 		if attempt == 3 {

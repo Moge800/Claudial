@@ -68,9 +68,11 @@ func onReady(cfg config) {
 				return
 			}
 			log.Println("daemon loop exited; restarting in 5s")
+			t := time.NewTimer(5 * time.Second)
 			select {
-			case <-time.After(5 * time.Second):
+			case <-t.C:
 			case <-ctx.Done():
+				t.Stop()
 				return
 			}
 		}
