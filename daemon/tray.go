@@ -39,6 +39,15 @@ func onReady(cfg config) {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Stop Claudial daemon")
 
+	// アダプタ有効化は再開ループの外で一度だけ。再有効化はWindowsでエラーになる。
+	// Windowsはトレイ常駐なので失敗してもFatalにせず、scanループのリトライに任せる
+	// （起動直後にBLEスタックが未準備なケースに対応）。
+	// Enable once, outside the restart loop — re-Enable errors on Windows. As a tray app,
+	// don't Fatal on failure; let the scan loop retry (handles a not-yet-ready BLE stack at boot).
+	if err := adapter.Enable(); err != nil {
+		log.Printf("enable adapter: %v (continuing — scan loop will retry)", err)
+	}
+
 	// Quitで再接続ループをキャンセルできるようcontextを渡す。
 	// Pass a cancellable context so Quit stops the reconnect loop cleanly.
 	ctx, cancel := context.WithCancel(context.Background())

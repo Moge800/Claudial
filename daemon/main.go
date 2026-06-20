@@ -319,13 +319,10 @@ func run(ctx context.Context, cfg config) error {
 	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
 		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
 
-	// panic recover後の再開ループでも呼ばれるため致命にしない。
-	// アダプタ未接続ならScanが拾って5sリトライへ回る。
-	// Non-fatal: this runs again after panic recovery; a missing adapter
-	// is caught by the scan retry loop below.
-	if err := adapter.Enable(); err != nil {
-		log.Printf("enable adapter: %v (continuing — scan loop will retry)", err)
-	}
+	// adapter.Enable() は呼び出し側が一度だけ行う。run() は再開ループから
+	// 複数回呼ばれうるため、ここで Enable すると Windows で再有効化エラーになる。
+	// The caller enables the adapter once — run() may be called repeatedly by the
+	// restart loop, and re-Enable would error on Windows.
 
 	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	for {
