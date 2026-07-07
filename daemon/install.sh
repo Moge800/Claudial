@@ -30,14 +30,28 @@ if [[ "$OSTYPE" == "linux"* ]]; then
         echo "[OK] BlueZ ${BLUEZ_VER} を確認しました。"
     fi
 
-    # bluetooth グループ確認
-    if ! groups | grep -qw bluetooth; then
-        echo "[WARN] 現在のユーザーが 'bluetooth' グループに属していません。"
-        echo "       BLE アクセスに失敗する場合は以下を実行してください:"
-        echo "       sudo usermod -aG bluetooth \$USER"
-        echo "       （反映には再ログインが必要です）"
-    else
-        echo "[OK] bluetooth グループのメンバーです。"
+    # bluetooth サービス確認 / Check the bluetooth service is running
+    if command -v systemctl &>/dev/null; then
+        if ! systemctl is-active --quiet bluetooth; then
+            echo "[WARN] bluetooth.service が起動していません。以下で有効化してください:"
+            echo "       sudo systemctl enable --now bluetooth"
+        else
+            echo "[OK] bluetooth.service は起動中です。"
+        fi
+    fi
+
+    # bluetooth グループ確認（グループが存在するディストリのみ / only on distros that have the group）
+    # Arch などでは bluetooth グループは存在せず、polkit がローカルセッションに権限を与える。
+    # On Arch there is no 'bluetooth' group — polkit grants access to local sessions.
+    if getent group bluetooth >/dev/null 2>&1; then
+        if ! groups | grep -qw bluetooth; then
+            echo "[WARN] 現在のユーザーが 'bluetooth' グループに属していません。"
+            echo "       BLE アクセスに失敗する場合は以下を実行してください:"
+            echo "       sudo usermod -aG bluetooth \$USER"
+            echo "       （反映には再ログインが必要です）"
+        else
+            echo "[OK] bluetooth グループのメンバーです。"
+        fi
     fi
     echo
 fi
@@ -93,7 +107,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 </dict>
 </plist>
 EOF
-        mkdir -p "$HOME/.Claudial"
+        mkdir -p "$HOME/.claudial"
         launchctl load "$PLIST"
         echo "[OK] launchd に登録しました: $PLIST"
     else
