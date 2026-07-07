@@ -47,7 +47,7 @@ Claudial/
 
 | 項目 | 要件 |
 |------|------|
-| [Python 3](https://www.python.org/) | `flash.bat` でのファームウェア書き込み（PlatformIO を使う場合は不要） |
+| [Python 3](https://www.python.org/) | `flash.bat` / `flash.sh` でのファームウェア書き込み（PlatformIO を使う場合は不要） |
 | [PlatformIO](https://platformio.org/) | ファームウェアのビルド・書き込み（ビルド済みファームウェアを使う場合は不要） |
 | [Go 1.26+](https://go.dev/dl/) | デーモンのビルド（ビルド済みバイナリを使う場合は不要） |
 | [Claude Code](https://claude.ai/code) | 認証情報の生成（`claude login`） |
@@ -59,13 +59,21 @@ Claudial/
 
 ### ファームウェア
 
-#### 方法A — ビルド済みファームウェアを書き込む — Windows のみ（PlatformIO不要）
+#### 方法A — ビルド済みファームウェアを書き込む — Windows / Linux（PlatformIO不要）
+
+**Windows**
 
 1. [最新リリース](https://github.com/Moge800/Claudial/releases/latest) から `claudial-firmware.bin` と `flash.bat` の**両方**を同じフォルダにダウンロード
 2. M5Stack Dial を USB-C で PC に接続
 3. `flash.bat` を実行 — 1台だけ検出できた場合はCOMポートを自動選択、複数または未検出の場合は番号選択または手動入力を促します（Python が必要）
 
-> **macOS / Linux:** `flash.bat` は Windows 専用です。方法B（PlatformIO）を使用してください。
+**Linux** — Arch Linux でテスト済み（他ディストリでも動くはずです）
+
+1. [最新リリース](https://github.com/Moge800/Claudial/releases/latest) から `claudial-firmware.bin` をこのリポジトリの `firmware/` フォルダにダウンロード
+2. M5Stack Dial を USB-C で PC に接続
+3. `firmware/flash.sh` を実行 — 複数のシリアルポートがあっても Espressif デバイスを自動選択し、シリアル権限もディストリ別のアドバイス付きでチェックします（Python が必要、esptool は未導入なら自動インストール）
+
+> **macOS:** 方法B（PlatformIO）を使用してください。
 
 > **ポートが見つからない場合**： Windows では [CP210x USB ドライバ](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) が必要なことがあります。インストール後、ケーブルを差し直してください。
 
@@ -100,7 +108,7 @@ daemon\install.bat
 スクリプト起動時にダウンロードか自己ビルド（Go必要）かを選択できます。スタートアップ登録や認証チェックも行います。
 
 ```
-# macOS / Linux（未テスト・近日対応予定）
+# Linux（Arch でテスト済み）/ macOS（未テスト）
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
@@ -110,10 +118,11 @@ chmod +x daemon/install.sh
 ```bash
 cd daemon
 go build -ldflags "-H=windowsgui" -o claudial-daemon.exe .   # Windows
-go build -o claudial-daemon .                                  # macOS / Linux（未テスト）
+go build -o claudial-daemon .                                  # Linux / macOS
 ```
 
-> **macOS / Linux:** ビルド・起動は可能ですが、動作未検証です。近日中にテスト予定です。
+> **Linux:** Arch Linux で flash → daemon → BLE まで動作確認済みです — Linux 対応は [@agricartel](https://github.com/agricartel) さんの貢献です（[#24](https://github.com/Moge800/Claudial/pull/24)）、ありがとうございます！ 他ディストリでも動くはずです — `install.sh` が BlueZ・`bluetooth.service`・グループ権限をチェックします。
+> **macOS:** ビルド・起動は可能ですが、動作未検証です。
 
 > **トークン消費について**
 > デーモンはポーリングのたびに `claude-haiku-4-5-20251001` へ最小限のAPIコール（input 8 + output 1 トークン）を行い、レスポンスのレートリミットヘッダーから使用率を取得します。デフォルトの 60 秒間隔（1日 1,440 回）では約 $0.019/日（月 約 $0.6）の消費で、Pro プランの日割り料金の 3% 未満です。

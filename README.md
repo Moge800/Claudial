@@ -47,7 +47,7 @@ Claudial/
 
 | Item | Requirement |
 |------|------------|
-| [Python 3](https://www.python.org/) | Firmware flashing via `flash.bat` (not required if using PlatformIO) |
+| [Python 3](https://www.python.org/) | Firmware flashing via `flash.bat` / `flash.sh` (not required if using PlatformIO) |
 | [PlatformIO](https://platformio.org/) | Firmware build & flash (not required if using pre-built firmware) |
 | [Go 1.26+](https://go.dev/dl/) | Daemon build (not required if using pre-built binary) |
 | [Claude Code](https://claude.ai/code) | Auth credentials (`claude login`) |
@@ -59,13 +59,21 @@ Claudial/
 
 ### Firmware
 
-#### Option A — Flash pre-built binary — Windows only (no PlatformIO required)
+#### Option A — Flash pre-built binary — Windows / Linux (no PlatformIO required)
+
+**Windows**
 
 1. Download **both** `claudial-firmware.bin` and `flash.bat` from the [latest release](https://github.com/Moge800/Claudial/releases/latest) into the same folder
 2. Connect M5Stack Dial via USB-C
 3. Run `flash.bat` — it detects the COM port automatically if only one device is found, otherwise prompts you to select or enter it manually (requires Python)
 
-> **macOS / Linux:** `flash.bat` is Windows-only. Use Option B (PlatformIO) instead.
+**Linux** — tested on Arch Linux; other distros should work
+
+1. Download `claudial-firmware.bin` from the [latest release](https://github.com/Moge800/Claudial/releases/latest) into this repository's `firmware/` folder
+2. Connect M5Stack Dial via USB-C
+3. Run `firmware/flash.sh` — it auto-selects the Espressif device when several serial ports are present and checks serial permissions with distro-specific advice (requires Python; installs esptool automatically if missing)
+
+> **macOS:** Use Option B (PlatformIO) instead.
 
 > **Port not found?** On Windows, you may need the [CP210x USB driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers). Install it, then replug the cable.
 
@@ -100,7 +108,7 @@ daemon\install.bat
 The script prompts you to either download the pre-built binary or build from source (Go required for the build option). It also handles startup registration and auth check.
 
 ```
-# macOS / Linux (untested — testing planned)
+# Linux (tested on Arch) / macOS (untested)
 chmod +x daemon/install.sh
 ./daemon/install.sh
 ```
@@ -110,10 +118,11 @@ chmod +x daemon/install.sh
 ```bash
 cd daemon
 go build -ldflags "-H=windowsgui" -o claudial-daemon.exe .   # Windows
-go build -o claudial-daemon .                                  # macOS / Linux (untested)
+go build -o claudial-daemon .                                  # Linux / macOS
 ```
 
-> **macOS / Linux:** The code compiles and runs, but has not been tested on these platforms yet. Testing is planned for the near future.
+> **Linux:** Verified end-to-end on Arch Linux (flash → daemon → BLE) — Linux support contributed by [@agricartel](https://github.com/agricartel) ([#24](https://github.com/Moge800/Claudial/pull/24)), thanks! Other distros should work: `install.sh` checks BlueZ, `bluetooth.service`, and group permissions for you.
+> **macOS:** The code compiles and runs, but has not been tested yet.
 
 > **Token usage**
 > The daemon fetches usage by making a minimal API call (`claude-haiku-4-5-20251001`, 8 input + 1 output tokens) every poll interval and reading the rate-limit headers from the response. At the default 60-second interval (1,440 calls/day) this costs roughly $0.019/day (~$0.6/month) — under 3% of a Pro plan's daily budget.
