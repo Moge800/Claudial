@@ -272,15 +272,39 @@ var adapter = bluetooth.DefaultAdapter
 const pendingConnectTimeout = bluetooth.Duration(math.MaxUint16)
 
 // addressFile は最後に接続したデバイスのアドレスを保存するファイル（~/.claudial/device-address）。
-// 内容は "<デバイス名> <アドレス>" の 1 行。
+// 内容はデバイス名とアドレスを持つ JSON。
 // addressFile stores the address of the last connected device (~/.claudial/device-address).
-// It holds one line: "<device name> <address>".
+// It contains JSON with the device name and address.
 func addressFile() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, ".claudial", "device-address"), nil
+}
+
+type savedAddress struct {
+	DeviceName string `json:"device_name"`
+	Address    string `json:"address"`
+}
+
+func parseSavedAddress(raw []byte) (savedAddress, bool) {
+	var saved savedAddress
+	if err := json.Unmarshal(raw, &saved); err == nil && saved.DeviceName != "" && saved.Address != "" {
+		return saved, true
+	}
+
+	// PR #25 initially used "<device name> <address>". Split from the end so
+	// existing files keep working even when the configured device name has spaces.
+	legacy := strings.TrimSpace(string(raw))
+	separator := strings.LastIndexByte(legacy, ' ')
+	if separator <= 0 || separator == len(legacy)-1 {
+		return savedAddress{}, false
+	}
+	return savedAddress{
+		DeviceName: legacy[:separator],
+		Address:    legacy[separator+1:],
+	}, true
 }
 
 // loadAddress は保存済みアドレスを返す。ファイルがない、または別のデバイス名なら false。
@@ -295,24 +319,47 @@ func loadAddress(deviceName string) (bluetooth.Address, bool) {
 	if err != nil {
 		return addr, false
 	}
-	name, val, ok := strings.Cut(strings.TrimSpace(string(raw)), " ")
-	if !ok || name != deviceName {
+	saved, ok := parseSavedAddress(raw)
+	if !ok || saved.DeviceName != deviceName {
 		return addr, false
 	}
-	addr.Set(val)
-	return addr, addr.String() == val
+	addr.Set(saved.Address)
+	return addr, addr.String() == saved.Address
 }
 
 func saveAddress(deviceName string, addr bluetooth.Address) {
 	p, err := addressFile()
 	if err == nil {
 		if err = os.MkdirAll(filepath.Dir(p), 0700); err == nil {
-			err = os.WriteFile(p, []byte(deviceName+" "+addr.String()+"\n"), 0600)
+			var data []byte
+			data, err = json.Marshal(savedAddress{
+				DeviceName: deviceName,
+				Address:    addr.String(),
+			})
+			if err == nil {
+				data = append(data, '\n')
+				err = os.WriteFile(p, data, 0600)
+			}
 		}
 	}
 	if err != nil {
 		log.Printf("Cannot save device address: %v", err)
 	}
+}
+
+func clearAddress() {
+	p, err := addressFile()
+	if err != nil {
+		return
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		log.Printf("Cannot clear saved device address: %v", err)
+	}
+}
+
+func isUnknownPeerError(err error) bool {
+	// tinygo bluetooth v0.15.0 exposes this condition only as an error string.
+	return err != nil && strings.Contains(err.Error(), "no peer with address")
 }
 
 func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
@@ -374,7 +421,7 @@ func run(ctx context.Context, cfg config) error {
 	// The caller enables the adapter once — run() may be called repeatedly by the
 	// restart loop, and re-Enable would error on Windows.
 
-	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
+	var cached *payload // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	knownAddr, haveKnown := loadAddress(cfg.deviceName)
 	waiting := false // 接続待ちログを一度だけ出すためのフラグ / log the waiting state only once
 	for {
@@ -394,6 +441,13 @@ func run(ctx context.Context, cfg config) error {
 			if err != nil {
 				if ctx.Err() != nil {
 					return nil
+				}
+				if isUnknownPeerError(err) {
+					log.Printf("Saved device %s is no longer known. Clearing it and scanning again...", knownAddr)
+					clearAddress()
+					haveKnown = false
+					waiting = false
+					continue
 				}
 				if !waiting {
 					log.Printf("Device %s not in range (%v). Waiting for it without scanning...", knownAddr, err)
