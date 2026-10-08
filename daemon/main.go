@@ -265,6 +265,56 @@ func fetchUsage(ctx context.Context, token string, cfg config) (p *payload, retr
 
 var adapter = bluetooth.DefaultAdapter
 
+// pendingConnectTimeout は tinygo bluetooth の Connect が受け付ける最大待ち時間（uint16 × 0.625ms ≒ 41 秒）。
+// 待ち時間が尽きたら run() のループが Connect を呼び直す。
+// pendingConnectTimeout is the longest wait tinygo bluetooth's Connect accepts (uint16 × 0.625 ms ≈ 41 s).
+// When it expires, the loop in run() simply calls Connect again.
+const pendingConnectTimeout = bluetooth.Duration(math.MaxUint16)
+
+// addressFile は最後に接続したデバイスのアドレスを保存するファイル（~/.claudial/device-address）。
+// 内容は "<デバイス名> <アドレス>" の 1 行。
+// addressFile stores the address of the last connected device (~/.claudial/device-address).
+// It holds one line: "<device name> <address>".
+func addressFile() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".claudial", "device-address"), nil
+}
+
+// loadAddress は保存済みアドレスを返す。ファイルがない、または別のデバイス名なら false。
+// loadAddress returns the saved address, or false if there is none or it belongs to another device name.
+func loadAddress(deviceName string) (bluetooth.Address, bool) {
+	var addr bluetooth.Address
+	p, err := addressFile()
+	if err != nil {
+		return addr, false
+	}
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		return addr, false
+	}
+	name, val, ok := strings.Cut(strings.TrimSpace(string(raw)), " ")
+	if !ok || name != deviceName {
+		return addr, false
+	}
+	addr.Set(val)
+	return addr, addr.String() == val
+}
+
+func saveAddress(deviceName string, addr bluetooth.Address) {
+	p, err := addressFile()
+	if err == nil {
+		if err = os.MkdirAll(filepath.Dir(p), 0700); err == nil {
+			err = os.WriteFile(p, []byte(deviceName+" "+addr.String()+"\n"), 0600)
+		}
+	}
+	if err != nil {
+		log.Printf("Cannot save device address: %v", err)
+	}
+}
+
 func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 	log.Printf("Scanning for '%s'...", cfg.deviceName)
 
@@ -325,6 +375,8 @@ func run(ctx context.Context, cfg config) error {
 	// restart loop, and re-Enable would error on Windows.
 
 	var cached *payload  // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
+	knownAddr, haveKnown := loadAddress(cfg.deviceName)
+	waiting := false // 接続待ちログを一度だけ出すためのフラグ / log the waiting state only once
 	for {
 		// キャンセル済みなら終了 / Exit if context was cancelled (e.g. tray Quit).
 		select {
@@ -333,44 +385,70 @@ func run(ctx context.Context, cfg config) error {
 		default:
 		}
 
-		result, err := findDevice(ctx, cfg)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil // キャンセルによる終了は正常 / clean exit on cancel
+		var dev bluetooth.Device
+		if pendingConnect && haveKnown {
+			// 既知デバイスはスキャンせず、圏内に入るまで接続要求を保留して待つ（reconnect_darwin.go 参照）。
+			// Known device: don't scan, keep a connect request pending until it is in range (see reconnect_darwin.go).
+			var err error
+			dev, err = adapter.Connect(knownAddr, bluetooth.ConnectionParams{ConnectionTimeout: pendingConnectTimeout})
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				if !waiting {
+					log.Printf("Device %s not in range (%v). Waiting for it without scanning...", knownAddr, err)
+					waiting = true
+				}
+				select {
+				case <-time.After(5 * time.Second):
+				case <-ctx.Done():
+					return nil
+				}
+				continue
 			}
-			log.Printf("Scan error: %v. Retrying in 5s...", err)
-			select {
-			case <-time.After(5 * time.Second):
-			case <-ctx.Done():
-				return nil
+			waiting = false
+		} else {
+			result, err := findDevice(ctx, cfg)
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil // キャンセルによる終了は正常 / clean exit on cancel
+				}
+				log.Printf("Scan error: %v. Retrying in 5s...", err)
+				select {
+				case <-time.After(5 * time.Second):
+				case <-ctx.Done():
+					return nil
+				}
+				continue
 			}
-			continue
-		}
 
-		// findDevice成功後でもキャンセル済みならConnectをスキップする。
-		// Connect は ctx 非対応のため、ここでガードしないとQuitが長引く。
-		// Guard against ctx cancellation that arrived after findDevice returned —
-		// Connect ignores ctx, so skipping it here keeps Quit responsive.
-		if ctx.Err() != nil {
-			return nil
-		}
-
-		// tinygo bluetooth の Connect/DiscoverServices はコンテキスト非対応のため、
-		// Quit 時はこれらの完了を待つ必要がある（通常数秒以内）。
-		// Connect/DiscoverServices do not support context cancellation in tinygo bluetooth;
-		// Quit will wait for them to complete (normally within a few seconds).
-		dev, err := adapter.Connect(result.Address, bluetooth.ConnectionParams{})
-		if err != nil {
+			// findDevice成功後でもキャンセル済みならConnectをスキップする。
+			// Connect は ctx 非対応のため、ここでガードしないとQuitが長引く。
+			// Guard against ctx cancellation that arrived after findDevice returned —
+			// Connect ignores ctx, so skipping it here keeps Quit responsive.
 			if ctx.Err() != nil {
 				return nil
 			}
-			log.Printf("Connect error: %v. Retrying in 5s...", err)
-			select {
-			case <-time.After(5 * time.Second):
-			case <-ctx.Done():
-				return nil
+
+			// tinygo bluetooth の Connect/DiscoverServices はコンテキスト非対応のため、
+			// Quit 時はこれらの完了を待つ必要がある（通常数秒以内）。
+			// Connect/DiscoverServices do not support context cancellation in tinygo bluetooth;
+			// Quit will wait for them to complete (normally within a few seconds).
+			dev, err = adapter.Connect(result.Address, bluetooth.ConnectionParams{})
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				log.Printf("Connect error: %v. Retrying in 5s...", err)
+				select {
+				case <-time.After(5 * time.Second):
+				case <-ctx.Done():
+					return nil
+				}
+				continue
 			}
-			continue
+			knownAddr, haveKnown = result.Address, true
+			saveAddress(cfg.deviceName, result.Address)
 		}
 		log.Println("Connected!")
 
