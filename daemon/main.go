@@ -374,6 +374,11 @@ func isUnknownPeerError(err error) bool {
 }
 
 func nextScanRetryWait(current time.Duration) time.Duration {
+	// macOS only: repeated scans leak through tinygo bluetooth/cbgo. Other
+	// platforms retain the historical 5-second rediscovery interval.
+	if !pendingConnect {
+		return initialScanRetryWait
+	}
 	if current < initialScanRetryWait {
 		return initialScanRetryWait
 	}
@@ -381,6 +386,10 @@ func nextScanRetryWait(current time.Duration) time.Duration {
 		return maxScanRetryWait
 	}
 	return current * 2
+}
+
+func connectRetryWait() time.Duration {
+	return initialScanRetryWait
 }
 
 func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
@@ -501,6 +510,10 @@ func run(ctx context.Context, cfg config) error {
 				}
 				continue
 			}
+			// Discovery succeeded, so any accumulated scan-failure backoff no
+			// longer applies. A subsequent connection failure retries after the
+			// normal fixed interval on every platform.
+			scanRetryWait = 0
 
 			// findDevice成功後でもキャンセル済みならConnectをスキップする。
 			// Connect は ctx 非対応のため、ここでガードしないとQuitが長引く。
@@ -519,10 +532,10 @@ func run(ctx context.Context, cfg config) error {
 				if ctx.Err() != nil {
 					return nil
 				}
-				scanRetryWait = nextScanRetryWait(scanRetryWait)
-				log.Printf("Connect error: %v. Retrying discovery in %s...", err, scanRetryWait)
+				retryWait := connectRetryWait()
+				log.Printf("Connect error: %v. Retrying discovery in %s...", err, retryWait)
 				select {
-				case <-time.After(scanRetryWait):
+				case <-time.After(retryWait):
 				case <-ctx.Done():
 					return nil
 				}

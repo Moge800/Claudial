@@ -113,7 +113,16 @@ func TestLoadAddressRejectsMissingAndInvalidFiles(t *testing.T) {
 	}
 }
 
-func TestNextScanRetryWait(t *testing.T) {
+func TestNextScanRetryWaitIsOSSpecific(t *testing.T) {
+	if !pendingConnect {
+		for _, current := range []time.Duration{0, 5 * time.Second, 40 * time.Minute, time.Hour} {
+			if got := nextScanRetryWait(current); got != 5*time.Second {
+				t.Errorf("non-macOS nextScanRetryWait(%s)=%s, want 5s", current, got)
+			}
+		}
+		return
+	}
+
 	tests := []struct {
 		current time.Duration
 		want    time.Duration
@@ -125,8 +134,14 @@ func TestNextScanRetryWait(t *testing.T) {
 	}
 	for _, tc := range tests {
 		if got := nextScanRetryWait(tc.current); got != tc.want {
-			t.Errorf("nextScanRetryWait(%s)=%s, want %s", tc.current, got, tc.want)
+			t.Errorf("macOS nextScanRetryWait(%s)=%s, want %s", tc.current, got, tc.want)
 		}
+	}
+}
+
+func TestConnectRetryWaitRemainsFiveSeconds(t *testing.T) {
+	if got := connectRetryWait(); got != 5*time.Second {
+		t.Fatalf("connect retry wait=%s, want 5s", got)
 	}
 }
 

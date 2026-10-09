@@ -151,7 +151,7 @@ macOS remembers a previously connected BLE peripheral by its CoreBluetooth UUID.
 
 The next normal launch will discover and save the replacement Dial. The daemon deliberately does not discard a known UUID after ordinary connection timeouts, because an out-of-range Dial is indistinguishable from a replaced one and repeated macOS scans leak memory in the current Bluetooth dependency.
 
-When no device has ever been saved, failed discovery attempts back off from 5 seconds to a maximum of 1 hour. Restart the daemon to trigger an immediate scan.
+On macOS, when no device has ever been saved, failed discovery attempts back off from 5 seconds to a maximum of 1 hour. Restart the daemon to trigger an immediate scan. Windows and Linux retain the 5-second rediscovery interval.
 
 **Configuration (optional)**
 
