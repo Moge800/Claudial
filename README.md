@@ -141,6 +141,18 @@ Use the startup registration option in `install.bat` / `install.sh` to launch it
 > **Token expiry**
 > Claude Code auth tokens expire after a few hours. If the daemon logs a 401 error, run `claude login` again.
 
+**Replacing a Dial on macOS**
+
+macOS remembers a previously connected BLE peripheral by its CoreBluetooth UUID. If you replace the Dial and the daemon keeps waiting for the old one, quit the daemon and clear the saved UUID before restarting it:
+
+```bash
+./claudial-daemon --forget-device
+```
+
+The next normal launch will discover and save the replacement Dial. The daemon deliberately does not discard a known UUID after ordinary connection timeouts, because an out-of-range Dial is indistinguishable from a replaced one and repeated macOS scans leak memory in the current Bluetooth dependency.
+
+When no device has ever been saved, failed discovery attempts back off from 5 seconds to a maximum of 1 hour. Restart the daemon to trigger an immediate scan.
+
 **Configuration (optional)**
 
 Copy `daemon/.env.example` to `daemon/.env` and edit:

@@ -26,9 +26,11 @@ import (
 )
 
 const (
-	apiURL       = "https://api.anthropic.com/v1/messages"
-	rxUUID       = "29590732-a70c-4ea9-a739-000000000002"
-	maxRetryWait = 5 * time.Minute
+	apiURL               = "https://api.anthropic.com/v1/messages"
+	rxUUID               = "29590732-a70c-4ea9-a739-000000000002"
+	maxRetryWait         = 5 * time.Minute
+	initialScanRetryWait = 5 * time.Second
+	maxScanRetryWait     = time.Hour
 )
 
 // retryExpired は fetchUsage が 401 を返すときの専用センチネル値。
@@ -271,16 +273,24 @@ var adapter = bluetooth.DefaultAdapter
 // When it expires, the loop in run() simply calls Connect again.
 const pendingConnectTimeout = bluetooth.Duration(math.MaxUint16)
 
-// addressFile は最後に接続したデバイスのアドレスを保存するファイル（~/.claudial/device-address）。
-// 内容はデバイス名とアドレスを持つ JSON。
-// addressFile stores the address of the last connected device (~/.claudial/device-address).
-// It contains JSON with the device name and address.
-func addressFile() (string, error) {
+// addressFilePath はテストで実ユーザーのホームディレクトリへ触れないよう差し替え可能にする。
+// addressFilePath is replaceable so tests never need to touch the real user home directory.
+var addressFilePath = defaultAddressFilePath
+
+func defaultAddressFilePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, ".claudial", "device-address"), nil
+}
+
+// addressFile は最後に接続したデバイスのアドレスを保存するファイル（~/.claudial/device-address）。
+// 内容はデバイス名とアドレスを持つ JSON。
+// addressFile stores the address of the last connected device (~/.claudial/device-address).
+// It contains JSON with the device name and address.
+func addressFile() (string, error) {
+	return addressFilePath()
 }
 
 type savedAddress struct {
@@ -347,19 +357,30 @@ func saveAddress(deviceName string, addr bluetooth.Address) {
 	}
 }
 
-func clearAddress() {
+func clearAddress() error {
 	p, err := addressFile()
 	if err != nil {
-		return
+		return err
 	}
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-		log.Printf("Cannot clear saved device address: %v", err)
+		return err
 	}
+	return nil
 }
 
 func isUnknownPeerError(err error) bool {
 	// tinygo bluetooth v0.15.0 exposes this condition only as an error string.
 	return err != nil && strings.Contains(err.Error(), "no peer with address")
+}
+
+func nextScanRetryWait(current time.Duration) time.Duration {
+	if current < initialScanRetryWait {
+		return initialScanRetryWait
+	}
+	if current >= maxScanRetryWait/2 {
+		return maxScanRetryWait
+	}
+	return current * 2
 }
 
 func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
@@ -424,6 +445,7 @@ func run(ctx context.Context, cfg config) error {
 	var cached *payload // セッションをまたいで最後の正常値を保持 / keep last good value across sessions
 	knownAddr, haveKnown := loadAddress(cfg.deviceName)
 	waiting := false // 接続待ちログを一度だけ出すためのフラグ / log the waiting state only once
+	scanRetryWait := time.Duration(0)
 	for {
 		// キャンセル済みなら終了 / Exit if context was cancelled (e.g. tray Quit).
 		select {
@@ -444,9 +466,12 @@ func run(ctx context.Context, cfg config) error {
 				}
 				if isUnknownPeerError(err) {
 					log.Printf("Saved device %s is no longer known. Clearing it and scanning again...", knownAddr)
-					clearAddress()
+					if clearErr := clearAddress(); clearErr != nil {
+						log.Printf("Cannot clear saved device address: %v", clearErr)
+					}
 					haveKnown = false
 					waiting = false
+					scanRetryWait = 0
 					continue
 				}
 				if !waiting {
@@ -467,9 +492,10 @@ func run(ctx context.Context, cfg config) error {
 				if ctx.Err() != nil {
 					return nil // キャンセルによる終了は正常 / clean exit on cancel
 				}
-				log.Printf("Scan error: %v. Retrying in 5s...", err)
+				scanRetryWait = nextScanRetryWait(scanRetryWait)
+				log.Printf("Scan error: %v. Retrying in %s...", err, scanRetryWait)
 				select {
-				case <-time.After(5 * time.Second):
+				case <-time.After(scanRetryWait):
 				case <-ctx.Done():
 					return nil
 				}
@@ -493,9 +519,10 @@ func run(ctx context.Context, cfg config) error {
 				if ctx.Err() != nil {
 					return nil
 				}
-				log.Printf("Connect error: %v. Retrying in 5s...", err)
+				scanRetryWait = nextScanRetryWait(scanRetryWait)
+				log.Printf("Connect error: %v. Retrying discovery in %s...", err, scanRetryWait)
 				select {
-				case <-time.After(5 * time.Second):
+				case <-time.After(scanRetryWait):
 				case <-ctx.Done():
 					return nil
 				}
@@ -504,6 +531,7 @@ func run(ctx context.Context, cfg config) error {
 			knownAddr, haveKnown = result.Address, true
 			saveAddress(cfg.deviceName, result.Address)
 		}
+		scanRetryWait = 0
 		log.Println("Connected!")
 
 		token, err := loadToken()
@@ -694,10 +722,21 @@ func runSession(ctx context.Context, dev *bluetooth.Device, token string, cfg co
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime)
+	if forgetDeviceRequested(os.Args) {
+		if err := clearAddress(); err != nil {
+			log.Fatalf("Cannot clear saved device address: %v", err)
+		}
+		log.Println("Saved device address cleared. Restart the daemon to discover a replacement device.")
+		return
+	}
 	ensureSingleInstance() // 多重起動を防ぐ / Exit if another instance is already running.
 	cfg := loadConfig()
 	setupLogFile()
 	runWithTray(cfg)
+}
+
+func forgetDeviceRequested(args []string) bool {
+	return len(args) == 2 && args[1] == "--forget-device"
 }
 
 // setupLogFile はexeと同じフォルダにdaemon.logを作成しlogの出力先に追加する。
