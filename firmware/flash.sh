@@ -133,12 +133,28 @@ if [[ ! -r "$PORT" || ! -w "$PORT" ]]; then
 fi
 echo
 
-# Flash
-echo "[INFO] Flashing to $PORT at 921600 baud..."
-echo "       This takes about 30 seconds."
-echo
-if ! "${ESPTOOL[@]}" --chip esp32s3 --port "$PORT" --baud 921600 \
-    write-flash 0x0 "$BIN"; then
+# Flash - on failure, retry at lower speeds after a replug
+BAUDS=(921600 460800 115200)
+FLASHED=0
+for i in "${!BAUDS[@]}"; do
+    BAUD=${BAUDS[$i]}
+    echo "[INFO] Flashing to $PORT at $BAUD baud..."
+    echo "       This takes about 30 seconds (longer at lower speeds)."
+    echo
+    if "${ESPTOOL[@]}" --chip esp32s3 --port "$PORT" --baud "$BAUD" \
+        write-flash 0x0 "$BIN"; then
+        FLASHED=1
+        break
+    fi
+    NEXT=${BAUDS[$((i + 1))]:-}
+    [[ -n "$NEXT" ]] || break
+    echo
+    echo "[WARN] Flash failed at $BAUD baud. Retrying at $NEXT baud."
+    read -rp "       Unplug the device, plug it back in, then press Enter: " _
+    echo
+done
+
+if (( ! FLASHED )); then
     echo
     echo "[ERROR] Flash failed."
     echo "        - Check the port is correct"
