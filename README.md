@@ -161,6 +161,7 @@ Copy `daemon/.env.example` to `daemon/.env` and edit:
 CLAUDIAL_DEVICE_NAME=Claudial    # BLE device name (must match firmware)
 CLAUDIAL_POLL_INTERVAL=60        # Polling interval in seconds
 CLAUDIAL_SCAN_TIMEOUT=15         # BLE scan timeout in seconds
+CLAUDIAL_LOG_MAX_MB=5            # daemon.log size in MB before it moves to daemon.log.1 (one old file is kept)
 ```
 
 > **Config changes take effect on restart.** On Windows, use Quit → relaunch (or the systray **Open Config** tooltip is a reminder of this).

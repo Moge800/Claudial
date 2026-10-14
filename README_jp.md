@@ -161,6 +161,7 @@ macOSでは、保存済み機器が一度もない状態で発見に失敗した
 CLAUDIAL_DEVICE_NAME=Claudial    # BLE デバイス名（ファームウェアと合わせる）
 CLAUDIAL_POLL_INTERVAL=60        # ポーリング間隔（秒）
 CLAUDIAL_SCAN_TIMEOUT=15         # BLE スキャンタイムアウト（秒）
+CLAUDIAL_LOG_MAX_MB=5            # daemon.log の上限（MB）。超えたら daemon.log.1 に退避（古い世代は1つだけ）
 ```
 
 > **設定の変更はデーモン再起動後に反映されます。** Windows では Quit → 再起動してください（システムトレイの **Open Config** のツールチップにも記載されています）。

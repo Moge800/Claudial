@@ -51,6 +51,7 @@ type config struct {
 	deviceName   string
 	pollInterval time.Duration
 	scanTimeout  time.Duration
+	logMaxBytes  int64
 }
 
 func loadConfig() config {
@@ -67,6 +68,7 @@ func loadConfig() config {
 		deviceName:   "Claudial",
 		pollInterval: 60 * time.Second,
 		scanTimeout:  15 * time.Second,
+		logMaxBytes:  5 << 20,
 	}
 	if v := os.Getenv("CLAUDIAL_DEVICE_NAME"); v != "" {
 		cfg.deviceName = v
@@ -79,6 +81,11 @@ func loadConfig() config {
 	if v := os.Getenv("CLAUDIAL_SCAN_TIMEOUT"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.scanTimeout = time.Duration(n) * time.Second
+		}
+	}
+	if v := os.Getenv("CLAUDIAL_LOG_MAX_MB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.logMaxBytes = int64(n) << 20
 		}
 	}
 	return cfg
@@ -443,8 +450,8 @@ func findDevice(ctx context.Context, cfg config) (bluetooth.ScanResult, error) {
 }
 
 func run(ctx context.Context, cfg config) error {
-	log.Printf("Config: device=%s poll=%s scan_timeout=%s",
-		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout)
+	log.Printf("Config: device=%s poll=%s scan_timeout=%s log_max=%dMB",
+		cfg.deviceName, cfg.pollInterval, cfg.scanTimeout, cfg.logMaxBytes>>20)
 
 	// adapter.Enable() は呼び出し側が一度だけ行う。run() は再開ループから
 	// 複数回呼ばれうるため、ここで Enable すると Windows で再有効化エラーになる。
@@ -744,7 +751,7 @@ func main() {
 	}
 	ensureSingleInstance() // 多重起動を防ぐ / Exit if another instance is already running.
 	cfg := loadConfig()
-	setupLogFile()
+	setupLogFile(cfg.logMaxBytes)
 	runWithTray(cfg)
 }
 
@@ -754,7 +761,9 @@ func forgetDeviceRequested(args []string) bool {
 
 // setupLogFile はexeと同じフォルダにdaemon.logを作成しlogの出力先に追加する。
 // setupLogFile creates daemon.log next to the executable and tees log output to it.
-func setupLogFile() {
+// maxBytes を超えたら daemon.log.1 に退避する（古い世代は1つだけ）。
+// Past maxBytes the file is rotated to daemon.log.1, keeping a single old file.
+func setupLogFile(maxBytes int64) {
 	// os.Executable()失敗時はカレントディレクトリの daemon.log にフォールバック。
 	// tray.logPath() と同じフォールバックパスを使うことで Open Log が常に有効になる。
 	// Fall back to "daemon.log" in cwd on failure, matching tray.logPath()'s fallback.
@@ -762,7 +771,7 @@ func setupLogFile() {
 	if exe, err := os.Executable(); err == nil {
 		logFile = filepath.Join(filepath.Dir(exe), "daemon.log")
 	}
-	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := openRotatingFile(logFile, maxBytes)
 	if err != nil {
 		log.Printf("Cannot open log file %s: %v", logFile, err)
 		return
@@ -770,4 +779,71 @@ func setupLogFile() {
 	// ファイルを先にしてstdout失敗時もファイル書き込みを保証 / File first: ensures log is written even if stdout is invalid (windowsgui).
 	log.SetOutput(io.MultiWriter(f, os.Stdout))
 	log.Printf("Logging to %s", logFile)
+}
+
+// rotatingFile は log パッケージ専用の出力先。log.Logger が書き込みを直列化するのでロックは持たない。
+// rotatingFile is the log package's output; log.Logger serializes writes, so it holds no lock.
+type rotatingFile struct {
+	path     string
+	max      int64
+	f        *os.File
+	size     int64
+	rotateAt int64 // このサイズを超える書き込みで退避する / a write past this size triggers rotation
+}
+
+func openRotatingFile(path string, max int64) (*rotatingFile, error) {
+	r := &rotatingFile{path: path, max: max, rotateAt: max}
+	if err := r.open(); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (r *rotatingFile) open() error {
+	f, err := os.OpenFile(r.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+	st, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	r.f, r.size = f, st.Size()
+	return nil
+}
+
+func (r *rotatingFile) Write(p []byte) (int, error) {
+	if r.f == nil {
+		if err := r.open(); err != nil {
+			return 0, err
+		}
+	}
+	if r.size > 0 && r.size+int64(len(p)) > r.rotateAt {
+		if err := r.rotate(); err != nil {
+			return 0, err
+		}
+	}
+	n, err := r.f.Write(p)
+	r.size += int64(n)
+	return n, err
+}
+
+// Windows は開いたままのファイルを改名できないので、閉じてから改名する。
+// 改名できなければ（他のアプリが開いている等）同じファイルに書き続け、さらに max 書いたら再挑戦する。
+// Windows cannot rename an open file, so close it first. If the rename fails (another app
+// holds the file), keep appending and retry after another max bytes instead of on every write.
+func (r *rotatingFile) rotate() error {
+	r.f.Close()
+	renameErr := os.Rename(r.path, r.path+".1")
+	if err := r.open(); err != nil {
+		r.f = nil
+		return err
+	}
+	if renameErr != nil {
+		r.rotateAt = r.size + r.max
+	} else {
+		r.rotateAt = r.max
+	}
+	return nil
 }
