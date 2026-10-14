@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -157,5 +159,66 @@ func TestForgetDeviceRequested(t *testing.T) {
 		if forgetDeviceRequested(args) {
 			t.Fatalf("unexpected forget request for %#v", args)
 		}
+	}
+}
+
+func logLine(i int) string { return fmt.Sprintf("%02d%s\n", i, strings.Repeat("x", 37)) } // 40 bytes
+
+func openTestLog(t *testing.T, path string, max int64) *rotatingFile {
+	t.Helper()
+	r, err := openRotatingFile(path, max)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { r.f.Close() })
+	return r
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestRotatingFileMovesOversizedLogAndKeepsOneOldFile(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "daemon.log")
+	if err := os.WriteFile(p, []byte(strings.Repeat("o", 150)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	r := openTestLog(t, p, 100)
+	for i := 1; i <= 4; i++ {
+		if _, err := r.Write([]byte(logLine(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got, want := readFile(t, p), logLine(3)+logLine(4); got != want {
+		t.Fatalf("daemon.log = %q, want %q", got, want)
+	}
+	if got, want := readFile(t, p+".1"), logLine(1)+logLine(2); got != want {
+		t.Fatalf("daemon.log.1 = %q, want %q", got, want)
+	}
+}
+
+func TestRotatingFileKeepsAllLinesWhenRenameFails(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "daemon.log")
+	// A non-empty directory named daemon.log.1 makes the rename fail on every OS.
+	if err := os.MkdirAll(filepath.Join(p+".1", "blocker"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	r := openTestLog(t, p, 100)
+	var want string
+	for i := 1; i <= 6; i++ {
+		want += logLine(i)
+		if _, err := r.Write([]byte(logLine(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got := readFile(t, p); got != want {
+		t.Fatalf("daemon.log = %q, want all %d lines", got, 6)
 	}
 }

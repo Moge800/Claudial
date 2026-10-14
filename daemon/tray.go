@@ -159,6 +159,9 @@ CLAUDIAL_POLL_INTERVAL=60
 
 # CLAUDIAL_SCAN_TIMEOUT: BLE scan timeout per attempt, in whole seconds
 CLAUDIAL_SCAN_TIMEOUT=15
+
+# CLAUDIAL_LOG_MAX_MB: daemon.log size in whole MB before it moves to daemon.log.1
+CLAUDIAL_LOG_MAX_MB=5
 `
 
 // openOrCreateConfig は.envが存在しなければデフォルト内容で作成してから開く。
