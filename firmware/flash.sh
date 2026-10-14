@@ -150,7 +150,11 @@ for i in "${!BAUDS[@]}"; do
     [[ -n "$NEXT" ]] || break
     echo
     echo "[WARN] Flash failed at $BAUD baud. Retrying at $NEXT baud."
-    read -rp "       Unplug the device, plug it back in, then press Enter: " _
+    if [[ -t 0 ]]; then
+        read -rp "       Unplug the device, plug it back in, then press Enter: " _
+    else
+        echo "       Non-interactive mode; retrying immediately."
+    fi
     echo
 done
 
