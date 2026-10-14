@@ -96,22 +96,39 @@ if errorlevel 1 (
 )
 echo.
 
-:: Flash
-echo [INFO] Flashing to !PORT! at 921600 baud...
-echo        This takes about 30 seconds.
-echo.
-python -m esptool --chip esp32s3 --port "!PORT!" --baud 921600 ^
-    write-flash 0x0 "!BIN!"
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Flash failed.
-    echo         - Check the COM port is correct
-    echo         - Try a different USB cable or replug the device
-    echo         - Hold the boot button while plugging in if auto-reset fails
-    pause
-    exit /b 1
-)
+:: Flash - on failure, retry at lower speeds after a replug
+set "BAUD=921600"
 
+:flash_try
+echo [INFO] Flashing to !PORT! at !BAUD! baud...
+echo        This takes about 30 seconds (longer at lower speeds).
+echo.
+python -m esptool --chip esp32s3 --port "!PORT!" --baud !BAUD! ^
+    write-flash 0x0 "!BIN!"
+if not errorlevel 1 goto :flash_ok
+
+set "NEXT_BAUD="
+if "!BAUD!"=="921600" set "NEXT_BAUD=460800"
+if "!BAUD!"=="460800" set "NEXT_BAUD=115200"
+if "!NEXT_BAUD!"=="" goto :flash_failed
+echo.
+echo [WARN] Flash failed at !BAUD! baud. Retrying at !NEXT_BAUD! baud.
+echo        Unplug the device and plug it back in first.
+pause
+echo.
+set "BAUD=!NEXT_BAUD!"
+goto :flash_try
+
+:flash_failed
+echo.
+echo [ERROR] Flash failed.
+echo         - Check the COM port is correct
+echo         - Try a different USB cable or replug the device
+echo         - Hold the boot button while plugging in if auto-reset fails
+pause
+exit /b 1
+
+:flash_ok
 echo.
 echo ========================================
 echo  Done^! Unplug and replug to reboot.
