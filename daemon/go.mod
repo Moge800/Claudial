@@ -6,6 +6,8 @@ require (
 	github.com/getlantern/systray v1.2.2
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/sys v0.11.0
+	// v0.15.0 は Windows のスキャン中にメモリが漏れる（tinygo-org/bluetooth#451）。上げる前にスキャン中のメモリを測り直すこと。
+	// v0.15.0 leaks memory while scanning on Windows (tinygo-org/bluetooth#451); re-measure scan memory before upgrading.
 	tinygo.org/x/bluetooth v0.16.0
 )
 
