@@ -1,7 +1,7 @@
 name: Release
 
-# GitHubでリリースを作成したときに firmware.bin と daemon.exe を自動ビルドして添付する。
-# Automatically build and attach firmware.bin and daemon.exe when a GitHub Release is created.
+# GitHubでリリースを作成したときに firmware.bin と daemon.exe を自動ビルドし、書き込みスクリプトと一緒に添付する。
+# Automatically build firmware.bin and daemon.exe when a GitHub Release is created, and attach them with the flash scripts.
 on:
   release:
     types: [created]
@@ -54,6 +54,7 @@ jobs:
           files: |
             firmware/claudial-firmware.bin
             firmware/flash.bat
+            firmware/flash.sh
 
   # ---- Daemon (Windows / Go) ----
   build-daemon:
