@@ -69,9 +69,9 @@ Claudial/
 
 **Linux** — tested on Arch Linux; other distros should work
 
-1. Download `claudial-firmware.bin` from the [latest release](https://github.com/Moge800/Claudial/releases/latest) into this repository's `firmware/` folder
+1. Download **both** `claudial-firmware.bin` and `flash.sh` from the [latest release](https://github.com/Moge800/Claudial/releases/latest) into the same folder
 2. Connect M5Stack Dial via USB-C
-3. Run `firmware/flash.sh` — it auto-selects the Espressif device when several serial ports are present and checks serial permissions with distro-specific advice (requires Python; installs esptool automatically if missing)
+3. Run `bash flash.sh` in that folder (no need to make it executable) — it auto-selects the Espressif device when several serial ports are present and checks serial permissions with distro-specific advice (requires Python; installs esptool automatically if missing)
 
 > **macOS:** Use Option B (PlatformIO) instead.
 
